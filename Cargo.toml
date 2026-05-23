@@ -1,0 +1,28 @@
+[package]
+name = "pizza-analysis-core"
+version = "0.1.0"
+authors = ["INFINI Labs <hello@infini.ltd>"]
+edition = "2021"
+license = "MIT"
+description = "Core analysis components for INFINI Pizza — tokenizers, token filters, char filters, and language analyzers"
+repository = "https://github.com/pizza-rs/analysis-core"
+keywords = ["pizza", "search", "analysis", "tokenizer", "nlp"]
+
+
+[features]
+default = []
+std = ["pizza-engine/std"]
+
+[dependencies]
+pizza-engine = { path = "../../lib/engine", default-features = false }
+hashbrown = { version = "0.14", default-features = false }
+regex = { version = "1", default-features = false, features = ["std", "unicode-perl"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "analysis_benchmark"
+harness = false
+
+
