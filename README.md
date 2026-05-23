@@ -1,6 +1,19 @@
-# Pizza Analysis Core
+<div align="center">
 
-Core analysis components for the [Pizza](https://pizza.rs) search engine. Provides a comprehensive set of built-in normalizers, tokenizers, token filters, and pre-composed language analyzers for text processing and indexing.
+# 🧩 pizza-analysis-core
+
+**Core text analysis components for [INFINI Pizza](https://pizza.rs)**
+
+[![Crate](https://img.shields.io/badge/crate-pizza--analysis--core-blue)](https://github.com/pizza-rs/analysis-core)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
+*16 tokenizers · 60+ token filters · 13 normalizers · 65 built-in language analyzers*
+
+</div>
+
+---
+
+Provides the comprehensive foundation of normalizers, tokenizers, token filters, and pre-composed language analyzers for the [INFINI Pizza](https://pizza.rs) search engine.
 
 ## Table of Contents
 
@@ -2168,13 +2181,19 @@ let analyzer = Analyzer::new(
 | [`pizza-analysis-all`](https://github.com/pizza-rs/analysis-all) | Auto-generated meta-crate — one `register_all()` that wires every discovered plugin |
 | [`pizza-plugin-discovery`](https://github.com/pizza-rs/plugin-discovery) | CLI tool that scans contrib crates and (re-)generates `pizza-analysis-all` |
 | [`pizza-analysis-stemmers`](https://github.com/pizza-rs/analysis-stemmers) | Snowball stemming algorithms (33 languages) |
-| [`pizza-analysis-ik`](../../contrib/ik) | IK Chinese segmenter (smart/max_word modes) |
-| [`pizza-analysis-jieba`](../../contrib/jieba) | Jieba Chinese segmenter |
-| [`pizza-analysis-pinyin`](../../contrib/pinyin) | Chinese Pinyin tokenizer + filter |
-| [`pizza-analysis-stconvert`](../../contrib/stconvert) | Simplified ↔ Traditional Chinese conversion |
+| [`pizza-analysis-ik`](https://github.com/pizza-rs/analysis-ik) | IK Chinese segmenter (smart/max_word modes) |
+| [`pizza-analysis-jieba`](https://github.com/pizza-rs/analysis-jieba) | Jieba Chinese segmenter |
+| [`pizza-analysis-pinyin`](https://github.com/pizza-rs/analysis-pinyin) | Chinese Pinyin tokenizer + filter |
+| [`pizza-analysis-stconvert`](https://github.com/pizza-rs/analysis-stconvert) | Simplified ↔ Traditional Chinese conversion |
 
 ---
 
 ## License
 
 MIT
+
+---
+
+<div align="center">
+<sub>Part of the <a href="https://pizza.rs">INFINI Pizza</a> ecosystem</sub>
+</div>

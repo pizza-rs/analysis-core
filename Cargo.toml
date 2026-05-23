@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["INFINI Labs <hello@infini.ltd>"]
 edition = "2021"
 license = "MIT"
-description = "Core analysis components for INFINI Pizza — tokenizers, token filters, char filters, and language analyzers"
+description = "Core text analysis components for INFINI Pizza — tokenizers, filters, normalizers, and analyzers"
 repository = "https://github.com/pizza-rs/analysis-core"
 keywords = ["pizza", "search", "analysis", "tokenizer", "nlp"]
 
