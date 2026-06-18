@@ -14,9 +14,19 @@ use pizza_engine::analysis::{Token, TokenFilter};
 /// - `end_offset >= start_offset` (well-formed)
 ///
 /// When a violation is detected, offsets are clamped to preserve monotonicity.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FixBrokenOffsetsFilter {
     last_end: std::sync::atomic::AtomicU32,
+}
+
+impl Clone for FixBrokenOffsetsFilter {
+    fn clone(&self) -> Self {
+        Self {
+            last_end: std::sync::atomic::AtomicU32::new(
+                self.last_end.load(std::sync::atomic::Ordering::Relaxed),
+            ),
+        }
+    }
 }
 
 impl FixBrokenOffsetsFilter {
