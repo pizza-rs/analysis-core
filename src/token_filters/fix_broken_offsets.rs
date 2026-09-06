@@ -1,6 +1,7 @@
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
-use pizza_engine::analysis::{Token, TokenFilter};
+use pizza_engine::analysis::Token;
+use pizza_engine::analysis::TokenFilter;
 
 /// Ensures that token offsets are monotonically non-decreasing.
 ///
@@ -62,7 +63,8 @@ impl TokenFilter for FixBrokenOffsetsFilter {
             token.end_offset = token.start_offset;
         }
 
-        self.last_end.store(token.end_offset, std::sync::atomic::Ordering::Relaxed);
+        self.last_end
+            .store(token.end_offset, std::sync::atomic::Ordering::Relaxed);
 
         (false, None)
     }

@@ -17,10 +17,14 @@ use pizza_engine::analysis::TokenFilter;
 #[derive(Clone, Debug)]
 pub struct QuechuaStemTokenFilter;
 impl QuechuaStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for QuechuaStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for QuechuaStemTokenFilter {
@@ -56,19 +60,19 @@ fn stem_quechua(word: &str) -> String {
 
     // Case suffixes
     let case_suffixes = &[
-        "manta",  // ablative "from"
-        "kama",   // limitative "until"
-        "pura",   // "among"
-        "rayku",  // "because of"
-        "ntin",   // inclusive
-        "kuna",   // plural
-        "wan",    // instrumental/comitative "with"
-        "man",    // dative/allative "to"
-        "paq",    // benefactive "for"
-        "pi",     // locative "in"
-        "ta",     // accusative (object)
-        "pa",     // genitive "of"
-        "qa",     // topic marker
+        "manta", // ablative "from"
+        "kama",  // limitative "until"
+        "pura",  // "among"
+        "rayku", // "because of"
+        "ntin",  // inclusive
+        "kuna",  // plural
+        "wan",   // instrumental/comitative "with"
+        "man",   // dative/allative "to"
+        "paq",   // benefactive "for"
+        "pi",    // locative "in"
+        "ta",    // accusative (object)
+        "pa",    // genitive "of"
+        "qa",    // topic marker
     ];
 
     for suffix in case_suffixes {
@@ -80,12 +84,12 @@ fn stem_quechua(word: &str) -> String {
 
     // Possessive suffixes
     let poss_suffixes = &[
-        "nchik", "nchis",  // 1st person inclusive plural
+        "nchik", "nchis", // 1st person inclusive plural
         "ykichik", "ykichis", // 2nd person plural
-        "nku",             // 3rd person plural
-        "yki",             // 2nd person singular
-        "y",               // 1st person singular
-        "n",               // 3rd person singular
+        "nku",     // 3rd person plural
+        "yki",     // 2nd person singular
+        "y",       // 1st person singular
+        "n",       // 3rd person singular
     ];
 
     for suffix in poss_suffixes {
@@ -102,10 +106,14 @@ fn stem_quechua(word: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct QuechuaStopTokenFilter;
 impl QuechuaStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for QuechuaStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for QuechuaStopTokenFilter {
@@ -119,7 +127,8 @@ impl TokenFilter for QuechuaStopTokenFilter {
 }
 
 fn is_quechua_stop(word: &str) -> bool {
-    matches!(word,
+    matches!(
+        word,
         "kay" | "chay" | "pay" | // pronouns this/that/he
         "ñuqa" | "qam" |         // I, you
         "ima" | "pi" | "may" |   // what, who, where
@@ -132,7 +141,7 @@ fn is_quechua_stop(word: &str) -> bool {
         "huq" | "huk" |           // one/a
         "chayqa" |                // then/so
         "hinaspa" |               // and then
-        "ichaqa"                  // however
+        "ichaqa" // however
     )
 }
 
@@ -148,10 +157,14 @@ fn is_quechua_stop(word: &str) -> bool {
 #[derive(Clone, Debug)]
 pub struct GuaraniNormalizationTokenFilter;
 impl GuaraniNormalizationTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for GuaraniNormalizationTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for GuaraniNormalizationTokenFilter {
@@ -160,12 +173,15 @@ impl TokenFilter for GuaraniNormalizationTokenFilter {
         let lower = text.to_lowercase();
 
         // Normalize Guarani-specific characters
-        let normalized: String = lower.chars().map(|c| match c {
-            // Normalize glottal stop variants to standard puso
-            '\u{02BC}' | '\u{2019}' | '\u{0027}' | '\u{2018}' => '\u{02BC}', // → modifier letter apostrophe
-            // Keep nasal vowels as-is (they're meaningful)
-            _ => c,
-        }).collect();
+        let normalized: String = lower
+            .chars()
+            .map(|c| match c {
+                // Normalize glottal stop variants to standard puso
+                '\u{02BC}' | '\u{2019}' | '\u{0027}' | '\u{2018}' => '\u{02BC}', // → modifier letter apostrophe
+                // Keep nasal vowels as-is (they're meaningful)
+                _ => c,
+            })
+            .collect();
 
         if normalized != text {
             token.term = Cow::Owned(normalized);
@@ -179,10 +195,14 @@ impl TokenFilter for GuaraniNormalizationTokenFilter {
 #[derive(Clone, Debug)]
 pub struct GuaraniStemTokenFilter;
 impl GuaraniStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for GuaraniStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for GuaraniStemTokenFilter {
@@ -207,18 +227,16 @@ fn stem_guarani(word: &str) -> String {
 
     // Strip common Guarani suffixes
     let suffixes = &[
-        "kuéra",  // plural
-        "kuera",
-        "guasu",  // augmentative
-        "mi",     // diminutive
-        "ite",    // superlative
-        "hára",   // agent nominalizer
-        "hara",
-        "py",     // collective/locative
-        "pe",     // locative "in"
-        "gui",    // ablative "from"
-        "re",     // locative "on"
-        "me",     // locative (nasal)
+        "kuéra", // plural
+        "kuera", "guasu", // augmentative
+        "mi",    // diminutive
+        "ite",   // superlative
+        "hára",  // agent nominalizer
+        "hara", "py",  // collective/locative
+        "pe",  // locative "in"
+        "gui", // ablative "from"
+        "re",  // locative "on"
+        "me",  // locative (nasal)
     ];
 
     for suffix in suffixes {
@@ -230,9 +248,8 @@ fn stem_guarani(word: &str) -> String {
 
     // Strip common prefixes
     let prefixes: &[&str] = &[
-        "mba'e",  // thing/what (nominal prefix)
-        "mbae",
-        "ñe'ẽ",   // speech prefix
+        "mba'e", // thing/what (nominal prefix)
+        "mbae", "ñe'ẽ", // speech prefix
     ];
 
     for prefix in prefixes {
@@ -249,10 +266,14 @@ fn stem_guarani(word: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct GuaraniStopTokenFilter;
 impl GuaraniStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for GuaraniStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for GuaraniStopTokenFilter {
@@ -266,7 +287,8 @@ impl TokenFilter for GuaraniStopTokenFilter {
 }
 
 fn is_guarani_stop(word: &str) -> bool {
-    matches!(word,
+    matches!(
+        word,
         "ha" | "ha'e" | "hae" | // and, he/she
         "che" | "nde" | "ore" | "ñande" | // I, you, we(excl), we(incl)
         "ko" | "pe" | "amo" |   // this, that, that(far)
@@ -279,6 +301,6 @@ fn is_guarani_stop(word: &str) -> bool {
         "ágã" | "aga" |          // now
         "ky'a" | "porã" |        // some particles
         "rupi" |                  // through/by
-        "rehe"                   // about/concerning
+        "rehe" // about/concerning
     )
 }

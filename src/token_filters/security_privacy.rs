@@ -15,9 +15,15 @@ pub struct EmailMaskTokenFilter {
     pub mask_char: char,
 }
 impl EmailMaskTokenFilter {
-    pub fn new() -> Self { Self { mask_char: '*' } }
+    pub fn new() -> Self {
+        Self { mask_char: '*' }
+    }
 }
-impl Default for EmailMaskTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for EmailMaskTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for EmailMaskTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -74,9 +80,19 @@ pub struct CreditCardMaskTokenFilter {
     pub visible_end: usize,
 }
 impl CreditCardMaskTokenFilter {
-    pub fn new() -> Self { Self { mask_char: '*', visible_start: 4, visible_end: 4 } }
+    pub fn new() -> Self {
+        Self {
+            mask_char: '*',
+            visible_start: 4,
+            visible_end: 4,
+        }
+    }
 }
-impl Default for CreditCardMaskTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for CreditCardMaskTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for CreditCardMaskTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -87,9 +103,14 @@ impl TokenFilter for CreditCardMaskTokenFilter {
             let start = &digits[..self.visible_start.min(len)];
             let end = &digits[len.saturating_sub(self.visible_end)..];
             let middle_len = len.saturating_sub(self.visible_start + self.visible_end);
-            let masked = format!("{}{}{}", start,
-                core::iter::repeat(self.mask_char).take(middle_len).collect::<String>(),
-                end);
+            let masked = format!(
+                "{}{}{}",
+                start,
+                core::iter::repeat(self.mask_char)
+                    .take(middle_len)
+                    .collect::<String>(),
+                end
+            );
             token.term = Cow::Owned(masked);
         }
         (false, None)
@@ -102,9 +123,15 @@ pub struct PhoneMaskTokenFilter {
     pub mask_char: char,
 }
 impl PhoneMaskTokenFilter {
-    pub fn new() -> Self { Self { mask_char: '*' } }
+    pub fn new() -> Self {
+        Self { mask_char: '*' }
+    }
 }
-impl Default for PhoneMaskTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for PhoneMaskTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for PhoneMaskTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -113,7 +140,9 @@ impl TokenFilter for PhoneMaskTokenFilter {
         if digits.len() >= 7 {
             let visible = 4;
             let masked_count = digits.len() - visible;
-            let masked: String = core::iter::repeat(self.mask_char).take(masked_count).collect::<String>()
+            let masked: String = core::iter::repeat(self.mask_char)
+                .take(masked_count)
+                .collect::<String>()
                 + &digits[masked_count..].iter().collect::<String>();
             token.term = Cow::Owned(masked);
         }
@@ -127,9 +156,15 @@ pub struct IpMaskTokenFilter {
     pub octets_visible: usize,
 }
 impl IpMaskTokenFilter {
-    pub fn new() -> Self { Self { octets_visible: 2 } }
+    pub fn new() -> Self {
+        Self { octets_visible: 2 }
+    }
 }
-impl Default for IpMaskTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for IpMaskTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for IpMaskTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -157,10 +192,16 @@ pub struct SsnMaskTokenFilter {
 }
 impl SsnMaskTokenFilter {
     pub fn new() -> Self {
-        Self { pattern: Regex::new(r"\d{3}-\d{2}-\d{4}").unwrap() }
+        Self {
+            pattern: Regex::new(r"\d{3}-\d{2}-\d{4}").unwrap(),
+        }
     }
 }
-impl Default for SsnMaskTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for SsnMaskTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for SsnMaskTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -169,7 +210,7 @@ impl TokenFilter for SsnMaskTokenFilter {
             // Keep last 4 digits only
             let result = self.pattern.replace_all(text, "***-**-$0");
             let masked = if text.len() >= 4 {
-                format!("***-**-{}", &text[text.len()-4..])
+                format!("***-**-{}", &text[text.len() - 4..])
             } else {
                 String::from("***-**-****")
             };
@@ -190,6 +231,7 @@ impl RedactTokenFilter {
             patterns: patterns.iter().filter_map(|p| Regex::new(p).ok()).collect(),
         }
     }
+
     pub fn emails_and_phones() -> Self {
         Self::new(&[
             r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}",
@@ -197,7 +239,13 @@ impl RedactTokenFilter {
         ])
     }
 }
-impl Default for RedactTokenFilter { fn default() -> Self { Self { patterns: Vec::new() } } }
+impl Default for RedactTokenFilter {
+    fn default() -> Self {
+        Self {
+            patterns: Vec::new(),
+        }
+    }
+}
 
 impl TokenFilter for RedactTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -220,7 +268,8 @@ impl SqlInjectionDetectTokenFilter {
     pub fn new() -> Self {
         Self {
             patterns: vec![
-                Regex::new(r"(?i)(union\s+select|drop\s+table|insert\s+into|delete\s+from)").unwrap(),
+                Regex::new(r"(?i)(union\s+select|drop\s+table|insert\s+into|delete\s+from)")
+                    .unwrap(),
                 Regex::new(r"(?i)(or\s+1\s*=\s*1|and\s+1\s*=\s*1|'\s*or\s*')").unwrap(),
                 Regex::new(r"(?i)(exec\s*\(|execute\s|xp_cmdshell)").unwrap(),
                 Regex::new(r"(--|;)\s*(drop|alter|create|truncate)").unwrap(),
@@ -228,7 +277,11 @@ impl SqlInjectionDetectTokenFilter {
         }
     }
 }
-impl Default for SqlInjectionDetectTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for SqlInjectionDetectTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for SqlInjectionDetectTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -266,7 +319,11 @@ impl XssDetectTokenFilter {
         }
     }
 }
-impl Default for XssDetectTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for XssDetectTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for XssDetectTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -289,8 +346,16 @@ impl TokenFilter for XssDetectTokenFilter {
 /// Detects path traversal attempts.
 #[derive(Clone, Debug)]
 pub struct PathTraversalDetectTokenFilter;
-impl PathTraversalDetectTokenFilter { pub fn new() -> Self { Self } }
-impl Default for PathTraversalDetectTokenFilter { fn default() -> Self { Self } }
+impl PathTraversalDetectTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for PathTraversalDetectTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for PathTraversalDetectTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -318,7 +383,9 @@ fn is_luhn_valid(digits: &str) -> bool {
             let mut val = d;
             if double {
                 val *= 2;
-                if val > 9 { val -= 9; }
+                if val > 9 {
+                    val -= 9;
+                }
             }
             sum += val;
             double = !double;

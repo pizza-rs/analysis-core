@@ -16,10 +16,14 @@ use pizza_engine::analysis::TokenFilter;
 #[derive(Clone, Debug)]
 pub struct NavajoNormalizationTokenFilter;
 impl NavajoNormalizationTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for NavajoNormalizationTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for NavajoNormalizationTokenFilter {
@@ -28,13 +32,16 @@ impl TokenFilter for NavajoNormalizationTokenFilter {
         let lower = text.to_lowercase();
 
         // Normalize variant representations
-        let normalized: String = lower.chars().map(|c| match c {
-            // Normalize apostrophe variants to standard glottal stop mark
-            '\'' | '\u{2019}' | '\u{02BC}' | '\u{02BB}' => '\u{02BC}',
-            // Normalize barred L variants
-            'Ł' => 'ł',
-            _ => c,
-        }).collect();
+        let normalized: String = lower
+            .chars()
+            .map(|c| match c {
+                // Normalize apostrophe variants to standard glottal stop mark
+                '\'' | '\u{2019}' | '\u{02BC}' | '\u{02BB}' => '\u{02BC}',
+                // Normalize barred L variants
+                'Ł' => 'ł',
+                _ => c,
+            })
+            .collect();
 
         if normalized != text {
             token.term = Cow::Owned(normalized);
@@ -51,33 +58,69 @@ pub struct NavajoToneRemoveTokenFilter {
     pub remove_nasal: bool,
 }
 impl NavajoToneRemoveTokenFilter {
-    pub fn new(remove_nasal: bool) -> Self { Self { remove_nasal } }
+    pub fn new(remove_nasal: bool) -> Self {
+        Self { remove_nasal }
+    }
 }
 impl Default for NavajoToneRemoveTokenFilter {
-    fn default() -> Self { Self { remove_nasal: false } }
+    fn default() -> Self {
+        Self {
+            remove_nasal: false,
+        }
+    }
 }
 
 impl TokenFilter for NavajoToneRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         let mut changed = false;
-        let normalized: String = text.chars().map(|c| {
-            match c {
-                // Strip high tone (acute)
-                'á' | 'Á' => { changed = true; 'a' }
-                'é' | 'É' => { changed = true; 'e' }
-                'í' | 'Í' => { changed = true; 'i' }
-                'ó' | 'Ó' => { changed = true; 'o' }
-                // Combined nasal + tone: ą́ is actually two chars, but precomposed forms:
-                '\u{01CE}' => { changed = true; 'a' } // ǎ
-                // Nasal vowels (only if configured)
-                'ą' | 'Ą' if self.remove_nasal => { changed = true; 'a' }
-                'ę' | 'Ę' if self.remove_nasal => { changed = true; 'e' }
-                'į' | 'Į' if self.remove_nasal => { changed = true; 'i' }
-                'ǫ' | 'Ǫ' if self.remove_nasal => { changed = true; 'o' }
-                _ => c,
-            }
-        }).collect();
+        let normalized: String = text
+            .chars()
+            .map(|c| {
+                match c {
+                    // Strip high tone (acute)
+                    'á' | 'Á' => {
+                        changed = true;
+                        'a'
+                    }
+                    'é' | 'É' => {
+                        changed = true;
+                        'e'
+                    }
+                    'í' | 'Í' => {
+                        changed = true;
+                        'i'
+                    }
+                    'ó' | 'Ó' => {
+                        changed = true;
+                        'o'
+                    }
+                    // Combined nasal + tone: ą́ is actually two chars, but precomposed forms:
+                    '\u{01CE}' => {
+                        changed = true;
+                        'a'
+                    } // ǎ
+                    // Nasal vowels (only if configured)
+                    'ą' | 'Ą' if self.remove_nasal => {
+                        changed = true;
+                        'a'
+                    }
+                    'ę' | 'Ę' if self.remove_nasal => {
+                        changed = true;
+                        'e'
+                    }
+                    'į' | 'Į' if self.remove_nasal => {
+                        changed = true;
+                        'i'
+                    }
+                    'ǫ' | 'Ǫ' if self.remove_nasal => {
+                        changed = true;
+                        'o'
+                    }
+                    _ => c,
+                }
+            })
+            .collect();
 
         if changed {
             token.term = Cow::Owned(normalized);
@@ -92,10 +135,14 @@ impl TokenFilter for NavajoToneRemoveTokenFilter {
 #[derive(Clone, Debug)]
 pub struct NavajoStemTokenFilter;
 impl NavajoStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for NavajoStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for NavajoStemTokenFilter {
@@ -120,14 +167,14 @@ fn stem_navajo(word: &str) -> String {
 
     // Common Navajo noun prefixes (postpositional/pronominal)
     let prefixes = &[
-        "bich'",   // toward him/her
-        "bik'",    // on him/her
-        "bits'",   // from him/her
-        "bee",     // with it
-        "bi",      // his/her/its
-        "shi",     // my
-        "ni",      // your
-        "ha",      // space/area
+        "bich'", // toward him/her
+        "bik'",  // on him/her
+        "bits'", // from him/her
+        "bee",   // with it
+        "bi",    // his/her/its
+        "shi",   // my
+        "ni",    // your
+        "ha",    // space/area
     ];
 
     for prefix in prefixes {
@@ -139,9 +186,8 @@ fn stem_navajo(word: &str) -> String {
 
     // Common Navajo nominal suffixes (limited in Navajo)
     let suffixes = &[
-        "ígíí",   // nominalizer "the one that"
-        "igii",
-        "é",      // enclitic
+        "ígíí", // nominalizer "the one that"
+        "igii", "é", // enclitic
     ];
 
     for suffix in suffixes {
@@ -158,10 +204,14 @@ fn stem_navajo(word: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct NavajoStopTokenFilter;
 impl NavajoStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for NavajoStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for NavajoStopTokenFilter {
@@ -175,7 +225,8 @@ impl TokenFilter for NavajoStopTokenFilter {
 }
 
 fn is_navajo_stop(word: &str) -> bool {
-    matches!(word,
+    matches!(
+        word,
         "éí" | "ei" |            // the/that (topic)
         "dóó" | "doo" |          // and / not
         "áko" | "ako" |          // so/then
@@ -190,7 +241,7 @@ fn is_navajo_stop(word: &str) -> bool {
         "doo" |                   // negative
         "nihí" | "nihi" |        // we/us
         "índa" | "inda" |        // just now
-        "háálá" | "haala"        // because
+        "háálá" | "haala" // because
     )
 }
 
@@ -205,10 +256,14 @@ fn is_navajo_stop(word: &str) -> bool {
 #[derive(Clone, Debug)]
 pub struct NahuatlStemTokenFilter;
 impl NahuatlStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for NahuatlStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for NahuatlStemTokenFilter {
@@ -234,21 +289,19 @@ fn stem_nahuatl(word: &str) -> String {
     // Strip common Nahuatl suffixes (noun/verb)
     let suffixes = &[
         "tzintli", // reverential
-        "tzintle",
-        "tzin",    // reverential/diminutive
-        "tli",     // absolutive singular
-        "tl",      // absolutive singular (after vowel)
-        "li",      // absolutive variant
-        "tin",     // plural
-        "meh",     // plural (modern)
-        "me",      // plural
-        "h",       // plural (Classical)
-        "yotl",    // abstract noun
-        "yot",
-        "lli",     // locative
-        "can",     // place
-        "yan",     // place
-        "pan",     // on/upon
+        "tzintle", "tzin", // reverential/diminutive
+        "tli",  // absolutive singular
+        "tl",   // absolutive singular (after vowel)
+        "li",   // absolutive variant
+        "tin",  // plural
+        "meh",  // plural (modern)
+        "me",   // plural
+        "h",    // plural (Classical)
+        "yotl", // abstract noun
+        "yot", "lli", // locative
+        "can", // place
+        "yan", // place
+        "pan", // on/upon
     ];
 
     for suffix in suffixes {
@@ -260,11 +313,11 @@ fn stem_nahuatl(word: &str) -> String {
 
     // Strip common noun prefixes
     let prefixes = &[
-        "no",   // my
-        "mo",   // your/reflexive
-        "to",   // our
-        "in",   // their/the
-        "i",    // his/her (before consonant)
+        "no", // my
+        "mo", // your/reflexive
+        "to", // our
+        "in", // their/the
+        "i",  // his/her (before consonant)
     ];
 
     for prefix in prefixes {
@@ -281,10 +334,14 @@ fn stem_nahuatl(word: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct NahuatlStopTokenFilter;
 impl NahuatlStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for NahuatlStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for NahuatlStopTokenFilter {
@@ -298,7 +355,8 @@ impl TokenFilter for NahuatlStopTokenFilter {
 }
 
 fn is_nahuatl_stop(word: &str) -> bool {
-    matches!(word,
+    matches!(
+        word,
         "in" | "ín" |           // the/definite article
         "ihuan" | "huan" |      // and
         "ica" |                  // with
@@ -314,7 +372,7 @@ fn is_nahuatl_stop(word: &str) -> bool {
         "niman" |                // then/immediately
         "tlein" | "tlen" |      // what/that (relative)
         "kenin" | "quenin" |    // how
-        "kanin" | "canin"       // where
+        "kanin" | "canin" // where
     )
 }
 
@@ -327,10 +385,14 @@ fn is_nahuatl_stop(word: &str) -> bool {
 #[derive(Clone, Debug)]
 pub struct AymaraStemTokenFilter;
 impl AymaraStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for AymaraStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for AymaraStemTokenFilter {
@@ -384,10 +446,14 @@ fn stem_aymara(word: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct AymaraStopTokenFilter;
 impl AymaraStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for AymaraStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for AymaraStopTokenFilter {
@@ -401,7 +467,8 @@ impl TokenFilter for AymaraStopTokenFilter {
 }
 
 fn is_aymara_stop(word: &str) -> bool {
-    matches!(word,
+    matches!(
+        word,
         "naya" | "juma" | "jupa" |  // I, you, he/she
         "nanaka" | "jumanaka" |      // we, you(pl)
         "jupanaka" |                  // they
@@ -412,6 +479,6 @@ fn is_aymara_stop(word: &str) -> bool {
         "jan" |                       // without
         "kunasa" |                    // what?
         "khitisa" |                   // who?
-        "kawkisa"                     // where?
+        "kawkisa" // where?
     )
 }

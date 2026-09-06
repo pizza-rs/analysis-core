@@ -92,7 +92,10 @@ fn register_tokenizers(factory: &mut AnalysisFactory) {
     factory.register_tokenizer("reverse", Box::new(ReverseTokenizer::new()));
     factory.register_tokenizer("elision", Box::new(ElisionTokenizer::default()));
     factory.register_tokenizer("log", Box::new(LogTokenizer::new()));
-    factory.register_tokenizer("sliding_window", Box::new(SlidingWindowTokenizer::default()));
+    factory.register_tokenizer(
+        "sliding_window",
+        Box::new(SlidingWindowTokenizer::default()),
+    );
     factory.register_tokenizer("markdown", Box::new(MarkdownTokenizer::new()));
 }
 
@@ -300,50 +303,20 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
         "russian_yo_normalization",
         Box::new(RussianYoNormalizationTokenFilter::new()),
     );
-    factory.register_token_filter(
-        "armenian_stem",
-        Box::new(ArmenianStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "basque_stem",
-        Box::new(BasqueStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "catalan_stem",
-        Box::new(CatalanStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "croatian_stem",
-        Box::new(CroatianStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "estonian_stem",
-        Box::new(EstonianStemTokenFilter::new()),
-    );
+    factory.register_token_filter("armenian_stem", Box::new(ArmenianStemTokenFilter::new()));
+    factory.register_token_filter("basque_stem", Box::new(BasqueStemTokenFilter::new()));
+    factory.register_token_filter("catalan_stem", Box::new(CatalanStemTokenFilter::new()));
+    factory.register_token_filter("croatian_stem", Box::new(CroatianStemTokenFilter::new()));
+    factory.register_token_filter("estonian_stem", Box::new(EstonianStemTokenFilter::new()));
     factory.register_token_filter(
         "lithuanian_stem",
         Box::new(LithuanianStemTokenFilter::new()),
     );
-    factory.register_token_filter(
-        "polish_stem",
-        Box::new(PolishStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "slovak_stem",
-        Box::new(SlovakStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "slovenian_stem",
-        Box::new(SlovenianStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "swedish_stem",
-        Box::new(SwedishStemTokenFilter::new()),
-    );
-    factory.register_token_filter(
-        "ukrainian_stem",
-        Box::new(UkrainianStemTokenFilter::new()),
-    );
+    factory.register_token_filter("polish_stem", Box::new(PolishStemTokenFilter::new()));
+    factory.register_token_filter("slovak_stem", Box::new(SlovakStemTokenFilter::new()));
+    factory.register_token_filter("slovenian_stem", Box::new(SlovenianStemTokenFilter::new()));
+    factory.register_token_filter("swedish_stem", Box::new(SwedishStemTokenFilter::new()));
+    factory.register_token_filter("ukrainian_stem", Box::new(UkrainianStemTokenFilter::new()));
     factory.register_token_filter(
         "spanish_light_stem",
         Box::new(SpanishLightStemTokenFilter::new()),
@@ -397,17 +370,26 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
         "concatenate_graph",
         Box::new(ConcatenateGraphTokenFilter::default()),
     );
-    factory.register_token_filter("date_recognizer", Box::new(DateRecognizerTokenFilter::new()));
+    factory.register_token_filter(
+        "date_recognizer",
+        Box::new(DateRecognizerTokenFilter::new()),
+    );
     factory.register_token_filter(
         "delimited_boost",
         Box::new(DelimitedBoostTokenFilter::default()),
     );
-    factory.register_token_filter("drop_if_flagged", Box::new(DropIfFlaggedTokenFilter::new("__DROP__")));
+    factory.register_token_filter(
+        "drop_if_flagged",
+        Box::new(DropIfFlaggedTokenFilter::new("__DROP__")),
+    );
     factory.register_token_filter(
         "english_minimal_stem",
         Box::new(EnglishMinimalStemTokenFilter::new()),
     );
-    factory.register_token_filter("fixed_shingle", Box::new(FixedShingleTokenFilter::default()));
+    factory.register_token_filter(
+        "fixed_shingle",
+        Box::new(FixedShingleTokenFilter::default()),
+    );
     factory.register_token_filter(
         "limit_token_offset",
         Box::new(LimitTokenOffsetFilter::new(usize::MAX)),
@@ -453,10 +435,7 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
         "swedish_minimal_stem",
         Box::new(SwedishMinimalStemTokenFilter::new()),
     );
-    factory.register_token_filter(
-        "type_as_synonym",
-        Box::new(TypeAsSynonymTokenFilter::new()),
-    );
+    factory.register_token_filter("type_as_synonym", Box::new(TypeAsSynonymTokenFilter::new()));
 
     // ═══ Beyond-Lucene Innovative Filters ═══════════════════════════════════
 
@@ -464,8 +443,14 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
     factory.register_token_filter("emoji_to_text", Box::new(EmojiToTextTokenFilter::new()));
     factory.register_token_filter("emoji_remove", Box::new(EmojiRemoveTokenFilter::new()));
     factory.register_token_filter("emoji_extract", Box::new(EmojiExtractTokenFilter::new()));
-    factory.register_token_filter("emoji_sentiment", Box::new(EmojiSentimentTokenFilter::new()));
-    factory.register_token_filter("emoticon_to_text", Box::new(EmoticonToTextTokenFilter::new()));
+    factory.register_token_filter(
+        "emoji_sentiment",
+        Box::new(EmojiSentimentTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "emoticon_to_text",
+        Box::new(EmoticonToTextTokenFilter::new()),
+    );
 
     // Encoding & hash filters
     factory.register_token_filter("base64_encode", Box::new(Base64EncodeTokenFilter::new()));
@@ -478,29 +463,50 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
     factory.register_token_filter("fnv_hash", Box::new(FnvHashTokenFilter::new()));
     factory.register_token_filter("crc32", Box::new(Crc32TokenFilter::new()));
     factory.register_token_filter("murmur3", Box::new(MurmurHash3TokenFilter::new()));
-    factory.register_token_filter("hash_synonym", Box::new(HashSynonymTokenFilter::new(HashAlgorithm::Fnv1a)));
+    factory.register_token_filter(
+        "hash_synonym",
+        Box::new(HashSynonymTokenFilter::new(HashAlgorithm::Fnv1a)),
+    );
 
     // Extraction filters
     factory.register_token_filter("email_extract", Box::new(EmailExtractTokenFilter::new()));
     factory.register_token_filter("url_extract", Box::new(UrlExtractTokenFilter::new()));
     factory.register_token_filter("ip_extract", Box::new(IpExtractTokenFilter::new()));
-    factory.register_token_filter("hashtag_extract", Box::new(HashtagExtractTokenFilter::new()));
-    factory.register_token_filter("mention_extract", Box::new(MentionExtractTokenFilter::new()));
+    factory.register_token_filter(
+        "hashtag_extract",
+        Box::new(HashtagExtractTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "mention_extract",
+        Box::new(MentionExtractTokenFilter::new()),
+    );
     factory.register_token_filter("phone_extract", Box::new(PhoneExtractTokenFilter::new()));
-    factory.register_token_filter("currency_extract", Box::new(CurrencyExtractTokenFilter::new()));
+    factory.register_token_filter(
+        "currency_extract",
+        Box::new(CurrencyExtractTokenFilter::new()),
+    );
     factory.register_token_filter("number_extract", Box::new(NumberExtractTokenFilter::new()));
     factory.register_token_filter("email_domain", Box::new(EmailDomainTokenFilter::new()));
 
     // Security & privacy filters
     factory.register_token_filter("email_mask", Box::new(EmailMaskTokenFilter::new()));
-    factory.register_token_filter("credit_card_mask", Box::new(CreditCardMaskTokenFilter::new()));
+    factory.register_token_filter(
+        "credit_card_mask",
+        Box::new(CreditCardMaskTokenFilter::new()),
+    );
     factory.register_token_filter("phone_mask", Box::new(PhoneMaskTokenFilter::new()));
     factory.register_token_filter("ip_mask", Box::new(IpMaskTokenFilter::new()));
     factory.register_token_filter("ssn_mask", Box::new(SsnMaskTokenFilter::new()));
     factory.register_token_filter("redact", Box::new(RedactTokenFilter::default()));
-    factory.register_token_filter("sql_injection_detect", Box::new(SqlInjectionDetectTokenFilter::new()));
+    factory.register_token_filter(
+        "sql_injection_detect",
+        Box::new(SqlInjectionDetectTokenFilter::new()),
+    );
     factory.register_token_filter("xss_detect", Box::new(XssDetectTokenFilter::new()));
-    factory.register_token_filter("path_traversal_detect", Box::new(PathTraversalDetectTokenFilter::new()));
+    factory.register_token_filter(
+        "path_traversal_detect",
+        Box::new(PathTraversalDetectTokenFilter::new()),
+    );
 
     // Text transform filters
     factory.register_token_filter("camel_case", Box::new(CamelCaseTokenFilter::new()));
@@ -508,11 +514,17 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
     factory.register_token_filter("kebab_case", Box::new(KebabCaseTokenFilter::new()));
     factory.register_token_filter("pascal_case", Box::new(PascalCaseTokenFilter::new()));
     factory.register_token_filter("slugify", Box::new(SlugifyTokenFilter::new()));
-    factory.register_token_filter("camel_case_split", Box::new(CamelCaseSplitTokenFilter::new()));
+    factory.register_token_filter(
+        "camel_case_split",
+        Box::new(CamelCaseSplitTokenFilter::new()),
+    );
     factory.register_token_filter("word_reverse", Box::new(WordReverseTokenFilter::new()));
     factory.register_token_filter("pig_latin", Box::new(PigLatinTokenFilter::new()));
     factory.register_token_filter("repeat_char", Box::new(RepeatCharTokenFilter::default()));
-    factory.register_token_filter("collapse_repeats", Box::new(CollapseRepeatsTokenFilter::new(1)));
+    factory.register_token_filter(
+        "collapse_repeats",
+        Box::new(CollapseRepeatsTokenFilter::new(1)),
+    );
     factory.register_token_filter("pad", Box::new(PadTokenFilter::default()));
     factory.register_token_filter("partial_mask", Box::new(PartialMaskTokenFilter::default()));
 
@@ -525,23 +537,41 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
     factory.register_token_filter("script_tag", Box::new(ScriptTagTokenFilter::new()));
     factory.register_token_filter("language_tag", Box::new(LanguageTagTokenFilter::new()));
     factory.register_token_filter("uuid_detect", Box::new(UuidDetectTokenFilter::new()));
-    factory.register_token_filter("entropy_filter", Box::new(EntropyFilterTokenFilter::default()));
+    factory.register_token_filter(
+        "entropy_filter",
+        Box::new(EntropyFilterTokenFilter::default()),
+    );
 
     // Web, network & geo filters
     factory.register_token_filter("domain_extract", Box::new(DomainExtractTokenFilter::new()));
     factory.register_token_filter("tld_extract", Box::new(TldExtractTokenFilter::new()));
     factory.register_token_filter("url_scheme", Box::new(UrlSchemeTokenFilter::new()));
     factory.register_token_filter("url_path", Box::new(UrlPathTokenFilter::new()));
-    factory.register_token_filter("ip_normalization", Box::new(IpNormalizationTokenFilter::new()));
+    factory.register_token_filter(
+        "ip_normalization",
+        Box::new(IpNormalizationTokenFilter::new()),
+    );
     factory.register_token_filter("ip_to_numeric", Box::new(IpToNumericTokenFilter::new()));
     factory.register_token_filter("ip_classify", Box::new(IpClassifyTokenFilter::new()));
     factory.register_token_filter("geohash", Box::new(GeohashTokenFilter::default()));
-    factory.register_token_filter("geohash_prefix", Box::new(GeohashPrefixTokenFilter::default()));
-    factory.register_token_filter("url_normalization", Box::new(UrlNormalizationTokenFilter::new()));
+    factory.register_token_filter(
+        "geohash_prefix",
+        Box::new(GeohashPrefixTokenFilter::default()),
+    );
+    factory.register_token_filter(
+        "url_normalization",
+        Box::new(UrlNormalizationTokenFilter::new()),
+    );
 
     // Code, log & science filters
-    factory.register_token_filter("identifier_split", Box::new(IdentifierSplitTokenFilter::new()));
-    factory.register_token_filter("programming_keyword", Box::new(ProgrammingKeywordTokenFilter::new()));
+    factory.register_token_filter(
+        "identifier_split",
+        Box::new(IdentifierSplitTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "programming_keyword",
+        Box::new(ProgrammingKeywordTokenFilter::new()),
+    );
     factory.register_token_filter("log_level", Box::new(LogLevelTokenFilter::new()));
     factory.register_token_filter("key_value_pair", Box::new(KeyValuePairTokenFilter::new()));
     factory.register_token_filter("semver", Box::new(SemverTokenFilter::new()));
@@ -554,38 +584,71 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
     factory.register_token_filter("path_component", Box::new(PathComponentTokenFilter::new()));
 
     // NLP & social media filters
-    factory.register_token_filter("contraction_expand", Box::new(ContractionExpandTokenFilter::new()));
-    factory.register_token_filter("abbreviation_expand", Box::new(AbbreviationExpandTokenFilter::new()));
+    factory.register_token_filter(
+        "contraction_expand",
+        Box::new(ContractionExpandTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "abbreviation_expand",
+        Box::new(AbbreviationExpandTokenFilter::new()),
+    );
     factory.register_token_filter("hashtag_split", Box::new(HashtagSplitTokenFilter::new()));
     factory.register_token_filter("slang_norm", Box::new(SlangNormTokenFilter::new()));
     factory.register_token_filter("sentence_case", Box::new(SentenceCaseTokenFilter::new()));
     factory.register_token_filter("mention_tag", Box::new(MentionTagTokenFilter::new()));
     factory.register_token_filter("hashtag_tag", Box::new(HashtagTagTokenFilter::new()));
-    factory.register_token_filter("stretched_word_norm", Box::new(StretchedWordNormTokenFilter::new()));
+    factory.register_token_filter(
+        "stretched_word_norm",
+        Box::new(StretchedWordNormTokenFilter::new()),
+    );
     factory.register_token_filter("sentiment_tag", Box::new(SentimentTagTokenFilter::new()));
     factory.register_token_filter("mention_remove", Box::new(MentionRemoveTokenFilter::new()));
     factory.register_token_filter("hashtag_remove", Box::new(HashtagRemoveTokenFilter::new()));
     factory.register_token_filter("shouting_norm", Box::new(ShoutingNormTokenFilter::new()));
 
     // Advanced unicode filters
-    factory.register_token_filter("invisible_char_remove", Box::new(InvisibleCharRemoveTokenFilter::new()));
-    factory.register_token_filter("zero_width_remove", Box::new(ZeroWidthRemoveTokenFilter::new()));
+    factory.register_token_filter(
+        "invisible_char_remove",
+        Box::new(InvisibleCharRemoveTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "zero_width_remove",
+        Box::new(ZeroWidthRemoveTokenFilter::new()),
+    );
     factory.register_token_filter("bidi_strip", Box::new(BiDiStripTokenFilter::new()));
-    factory.register_token_filter("confusable_norm", Box::new(ConfusableNormTokenFilter::new()));
+    factory.register_token_filter(
+        "confusable_norm",
+        Box::new(ConfusableNormTokenFilter::new()),
+    );
     factory.register_token_filter("homoglyph_norm", Box::new(HomoglyphNormTokenFilter::new()));
-    factory.register_token_filter("mixed_script_detect", Box::new(MixedScriptDetectTokenFilter::new()));
+    factory.register_token_filter(
+        "mixed_script_detect",
+        Box::new(MixedScriptDetectTokenFilter::new()),
+    );
     factory.register_token_filter("fullwidth_norm", Box::new(FullwidthNormTokenFilter::new()));
-    factory.register_token_filter("diacritic_strip", Box::new(DiacriticStripTokenFilter::new()));
+    factory.register_token_filter(
+        "diacritic_strip",
+        Box::new(DiacriticStripTokenFilter::new()),
+    );
     factory.register_token_filter("emoji_presence", Box::new(EmojiPresenceTokenFilter::new()));
 
     // Number & conversion filters
     factory.register_token_filter("roman_numeral", Box::new(RomanNumeralTokenFilter::new()));
     factory.register_token_filter("ordinal", Box::new(OrdinalTokenFilter::new()));
     factory.register_token_filter("number_norm", Box::new(NumberNormTokenFilter::new()));
-    factory.register_token_filter("number_magnitude", Box::new(NumberMagnitudeTokenFilter::new()));
+    factory.register_token_filter(
+        "number_magnitude",
+        Box::new(NumberMagnitudeTokenFilter::new()),
+    );
     factory.register_token_filter("hex_to_decimal", Box::new(HexToDecimalTokenFilter::new()));
-    factory.register_token_filter("binary_to_decimal", Box::new(BinaryToDecimalTokenFilter::new()));
-    factory.register_token_filter("octal_to_decimal", Box::new(OctalToDecimalTokenFilter::new()));
+    factory.register_token_filter(
+        "binary_to_decimal",
+        Box::new(BinaryToDecimalTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "octal_to_decimal",
+        Box::new(OctalToDecimalTokenFilter::new()),
+    );
     factory.register_token_filter("numeric_range", Box::new(NumericRangeTokenFilter::new()));
     factory.register_token_filter("file_size_norm", Box::new(FileSizeNormTokenFilter::new()));
     factory.register_token_filter("duration_norm", Box::new(DurationNormTokenFilter::new()));
@@ -594,43 +657,91 @@ fn register_token_filters(factory: &mut AnalysisFactory) {
     // ═══ Minority & Indigenous Language Filters ══════════════════════════════════
 
     // Hebrew
-    factory.register_token_filter("hebrew_niqqud_remove", Box::new(HebrewNiqqudRemoveTokenFilter::new()));
+    factory.register_token_filter(
+        "hebrew_niqqud_remove",
+        Box::new(HebrewNiqqudRemoveTokenFilter::new()),
+    );
     factory.register_token_filter("hebrew_stem", Box::new(HebrewStemTokenFilter::new()));
-    factory.register_token_filter("hebrew_final_form_norm", Box::new(HebrewFinalFormNormTokenFilter::new()));
+    factory.register_token_filter(
+        "hebrew_final_form_norm",
+        Box::new(HebrewFinalFormNormTokenFilter::new()),
+    );
 
     // Yiddish
-    factory.register_token_filter("yiddish_normalization", Box::new(YiddishNormalizationTokenFilter::new()));
+    factory.register_token_filter(
+        "yiddish_normalization",
+        Box::new(YiddishNormalizationTokenFilter::new()),
+    );
     factory.register_token_filter("yiddish_stem", Box::new(YiddishStemTokenFilter::new()));
 
     // Scottish Gaelic
-    factory.register_token_filter("scottish_gaelic_lenition", Box::new(ScottishGaelicLenitionTokenFilter::new()));
-    factory.register_token_filter("scottish_gaelic_stop", Box::new(ScottishGaelicStopTokenFilter::new()));
+    factory.register_token_filter(
+        "scottish_gaelic_lenition",
+        Box::new(ScottishGaelicLenitionTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "scottish_gaelic_stop",
+        Box::new(ScottishGaelicStopTokenFilter::new()),
+    );
 
     // Tibetan
-    factory.register_token_filter("tibetan_tsek_segment", Box::new(TibetanTsekSegmentTokenFilter::new()));
-    factory.register_token_filter("tibetan_punctuation_remove", Box::new(TibetanPunctuationRemoveTokenFilter::new()));
-    factory.register_token_filter("tibetan_stop_syllable", Box::new(TibetanStopSyllableTokenFilter::new()));
+    factory.register_token_filter(
+        "tibetan_tsek_segment",
+        Box::new(TibetanTsekSegmentTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "tibetan_punctuation_remove",
+        Box::new(TibetanPunctuationRemoveTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "tibetan_stop_syllable",
+        Box::new(TibetanStopSyllableTokenFilter::new()),
+    );
 
     // Welsh
-    factory.register_token_filter("welsh_mutation_norm", Box::new(WelshMutationNormTokenFilter::new()));
+    factory.register_token_filter(
+        "welsh_mutation_norm",
+        Box::new(WelshMutationNormTokenFilter::new()),
+    );
     factory.register_token_filter("welsh_stop", Box::new(WelshStopTokenFilter::new()));
 
     // Cherokee & Khmer
-    factory.register_token_filter("cherokee_normalization", Box::new(CherokeeNormalizationTokenFilter::new()));
-    factory.register_token_filter("cherokee_translit_norm", Box::new(CherokeeTranslitNormTokenFilter::new()));
-    factory.register_token_filter("khmer_word_boundary", Box::new(KhmerWordBoundaryTokenFilter::new()));
-    factory.register_token_filter("khmer_sign_remove", Box::new(KhmerSignRemoveTokenFilter::new()));
+    factory.register_token_filter(
+        "cherokee_normalization",
+        Box::new(CherokeeNormalizationTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "cherokee_translit_norm",
+        Box::new(CherokeeTranslitNormTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "khmer_word_boundary",
+        Box::new(KhmerWordBoundaryTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "khmer_sign_remove",
+        Box::new(KhmerSignRemoveTokenFilter::new()),
+    );
 
     // Quechua & Guarani
     factory.register_token_filter("quechua_stem", Box::new(QuechuaStemTokenFilter::new()));
     factory.register_token_filter("quechua_stop", Box::new(QuechuaStopTokenFilter::new()));
-    factory.register_token_filter("guarani_normalization", Box::new(GuaraniNormalizationTokenFilter::new()));
+    factory.register_token_filter(
+        "guarani_normalization",
+        Box::new(GuaraniNormalizationTokenFilter::new()),
+    );
     factory.register_token_filter("guarani_stem", Box::new(GuaraniStemTokenFilter::new()));
     factory.register_token_filter("guarani_stop", Box::new(GuaraniStopTokenFilter::new()));
 
     // Navajo, Nahuatl & Aymara
-    factory.register_token_filter("navajo_normalization", Box::new(NavajoNormalizationTokenFilter::new()));
-    factory.register_token_filter("navajo_tone_remove", Box::new(NavajoToneRemoveTokenFilter::default()));
+    factory.register_token_filter(
+        "navajo_normalization",
+        Box::new(NavajoNormalizationTokenFilter::new()),
+    );
+    factory.register_token_filter(
+        "navajo_tone_remove",
+        Box::new(NavajoToneRemoveTokenFilter::default()),
+    );
     factory.register_token_filter("navajo_stem", Box::new(NavajoStemTokenFilter::new()));
     factory.register_token_filter("navajo_stop", Box::new(NavajoStopTokenFilter::new()));
     factory.register_token_filter("nahuatl_stem", Box::new(NahuatlStemTokenFilter::new()));
@@ -1298,9 +1409,8 @@ fn build_welsh_analyzer() -> Analyzer {
 }
 
 fn build_cherokee_analyzer() -> Analyzer {
-    let filters: Vec<Box<dyn TokenFilter>> = vec![
-        Box::new(CherokeeNormalizationTokenFilter::new()),
-    ];
+    let filters: Vec<Box<dyn TokenFilter>> =
+        vec![Box::new(CherokeeNormalizationTokenFilter::new())];
     Analyzer::new(vec![], Box::new(StandardTokenizer::new()), filters)
 }
 

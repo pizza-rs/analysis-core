@@ -11,8 +11,16 @@ use pizza_engine::analysis::TokenFilter;
 /// Expands English contractions: "don't" → "do not", "I'm" → "I am"
 #[derive(Clone, Debug)]
 pub struct ContractionExpandTokenFilter;
-impl ContractionExpandTokenFilter { pub fn new() -> Self { Self } }
-impl Default for ContractionExpandTokenFilter { fn default() -> Self { Self } }
+impl ContractionExpandTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for ContractionExpandTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for ContractionExpandTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -29,8 +37,16 @@ impl TokenFilter for ContractionExpandTokenFilter {
 /// Expands common abbreviations: "govt" → "government", "approx" → "approximately"
 #[derive(Clone, Debug)]
 pub struct AbbreviationExpandTokenFilter;
-impl AbbreviationExpandTokenFilter { pub fn new() -> Self { Self } }
-impl Default for AbbreviationExpandTokenFilter { fn default() -> Self { Self } }
+impl AbbreviationExpandTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for AbbreviationExpandTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for AbbreviationExpandTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -57,25 +73,40 @@ pub struct HashtagSplitTokenFilter {
     pub keep_original: bool,
 }
 impl HashtagSplitTokenFilter {
-    pub fn new() -> Self { Self { keep_original: true } }
+    pub fn new() -> Self {
+        Self {
+            keep_original: true,
+        }
+    }
 }
-impl Default for HashtagSplitTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for HashtagSplitTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for HashtagSplitTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         let body = text.strip_prefix('#').unwrap_or(text);
-        if body.is_empty() { return (false, None); }
+        if body.is_empty() {
+            return (false, None);
+        }
 
         let parts = split_camel_case(body);
-        if parts.len() <= 1 { return (false, None); }
+        if parts.len() <= 1 {
+            return (false, None);
+        }
 
-        let mut extras: Vec<Token<'a>> = parts.iter().map(|p| Token {
-            term: Cow::Owned(p.to_lowercase()),
-            start_offset: token.start_offset,
-            end_offset: token.end_offset,
-            position: token.position,
-        }).collect();
+        let mut extras: Vec<Token<'a>> = parts
+            .iter()
+            .map(|p| Token {
+                term: Cow::Owned(p.to_lowercase()),
+                start_offset: token.start_offset,
+                end_offset: token.end_offset,
+                position: token.position,
+            })
+            .collect();
 
         if self.keep_original {
             // Also add the full hashtag body without #
@@ -96,8 +127,16 @@ impl TokenFilter for HashtagSplitTokenFilter {
 /// Normalizes internet slang: "lol" → "laughing out loud", "brb" → "be right back"
 #[derive(Clone, Debug)]
 pub struct SlangNormTokenFilter;
-impl SlangNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SlangNormTokenFilter { fn default() -> Self { Self } }
+impl SlangNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SlangNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SlangNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -119,13 +158,23 @@ impl TokenFilter for SlangNormTokenFilter {
 /// Converts text to sentence case (first letter uppercase, rest lowercase).
 #[derive(Clone, Debug)]
 pub struct SentenceCaseTokenFilter;
-impl SentenceCaseTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SentenceCaseTokenFilter { fn default() -> Self { Self } }
+impl SentenceCaseTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SentenceCaseTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SentenceCaseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if text.is_empty() { return (false, None); }
+        if text.is_empty() {
+            return (false, None);
+        }
         let mut chars = text.chars();
         let first = chars.next().unwrap().to_uppercase().to_string();
         let rest: String = chars.as_str().to_lowercase();
@@ -137,8 +186,16 @@ impl TokenFilter for SentenceCaseTokenFilter {
 /// Detects and tags @mentions: "@user123" → emits "_mention:user123"
 #[derive(Clone, Debug)]
 pub struct MentionTagTokenFilter;
-impl MentionTagTokenFilter { pub fn new() -> Self { Self } }
-impl Default for MentionTagTokenFilter { fn default() -> Self { Self } }
+impl MentionTagTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for MentionTagTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for MentionTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -163,8 +220,16 @@ impl TokenFilter for MentionTagTokenFilter {
 /// Detects and tags #hashtags: "#rust" → emits "_hashtag:rust"
 #[derive(Clone, Debug)]
 pub struct HashtagTagTokenFilter;
-impl HashtagTagTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HashtagTagTokenFilter { fn default() -> Self { Self } }
+impl HashtagTagTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HashtagTagTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HashtagTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -191,9 +256,15 @@ pub struct StretchedWordNormTokenFilter {
     pub max_repeat: usize,
 }
 impl StretchedWordNormTokenFilter {
-    pub fn new() -> Self { Self { max_repeat: 2 } }
+    pub fn new() -> Self {
+        Self { max_repeat: 2 }
+    }
 }
-impl Default for StretchedWordNormTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for StretchedWordNormTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for StretchedWordNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -209,8 +280,16 @@ impl TokenFilter for StretchedWordNormTokenFilter {
 /// Detects text sentiment markers (simple keyword-based).
 #[derive(Clone, Debug)]
 pub struct SentimentTagTokenFilter;
-impl SentimentTagTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SentimentTagTokenFilter { fn default() -> Self { Self } }
+impl SentimentTagTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SentimentTagTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SentimentTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -233,8 +312,16 @@ impl TokenFilter for SentimentTagTokenFilter {
 /// Strip @mentions entirely from the stream.
 #[derive(Clone, Debug)]
 pub struct MentionRemoveTokenFilter;
-impl MentionRemoveTokenFilter { pub fn new() -> Self { Self } }
-impl Default for MentionRemoveTokenFilter { fn default() -> Self { Self } }
+impl MentionRemoveTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for MentionRemoveTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for MentionRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -248,8 +335,16 @@ impl TokenFilter for MentionRemoveTokenFilter {
 /// Strip #hashtags entirely from the stream.
 #[derive(Clone, Debug)]
 pub struct HashtagRemoveTokenFilter;
-impl HashtagRemoveTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HashtagRemoveTokenFilter { fn default() -> Self { Self } }
+impl HashtagRemoveTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HashtagRemoveTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HashtagRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -263,8 +358,16 @@ impl TokenFilter for HashtagRemoveTokenFilter {
 /// Detects if a token is ALL CAPS (shouting) and normalizes.
 #[derive(Clone, Debug)]
 pub struct ShoutingNormTokenFilter;
-impl ShoutingNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for ShoutingNormTokenFilter { fn default() -> Self { Self } }
+impl ShoutingNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for ShoutingNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for ShoutingNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -315,15 +418,15 @@ fn expand_contraction(s: &str) -> Option<&'static str> {
         "they've" | "theyve" => Some("they have"),
         "i'll" | "ill" => None, // ambiguous
         "you'll" | "youll" => Some("you will"),
-        "he'll" | "hell" => None, // ambiguous
+        "he'll" | "hell" => None,   // ambiguous
         "she'll" | "shell" => None, // ambiguous
-        "we'll" | "well" => None, // ambiguous
+        "we'll" | "well" => None,   // ambiguous
         "they'll" | "theyll" => Some("they will"),
         "i'd" | "id" => None, // ambiguous
         "you'd" | "youd" => Some("you would"),
         "he'd" | "hed" => Some("he would"),
         "she'd" | "shed" => None, // ambiguous
-        "we'd" | "wed" => None, // ambiguous
+        "we'd" | "wed" => None,   // ambiguous
         "they'd" | "theyd" => Some("they would"),
         "let's" | "lets" => None, // ambiguous
         "that's" | "thats" => Some("that is"),
@@ -453,13 +556,15 @@ fn collapse_stretches(s: &str, max_repeat: usize) -> String {
 
 fn get_word_sentiment(s: &str) -> Option<&'static str> {
     match s {
-        "good" | "great" | "excellent" | "amazing" | "wonderful" | "fantastic" | "awesome" |
-        "love" | "happy" | "joy" | "beautiful" | "perfect" | "best" | "brilliant" |
-        "outstanding" | "superb" | "incredible" | "delightful" | "pleasant" | "positive" => Some("positive"),
+        "good" | "great" | "excellent" | "amazing" | "wonderful" | "fantastic" | "awesome"
+        | "love" | "happy" | "joy" | "beautiful" | "perfect" | "best" | "brilliant"
+        | "outstanding" | "superb" | "incredible" | "delightful" | "pleasant" | "positive" => {
+            Some("positive")
+        }
 
-        "bad" | "terrible" | "horrible" | "awful" | "worst" | "hate" | "ugly" |
-        "disgusting" | "pathetic" | "dreadful" | "miserable" | "angry" | "sad" |
-        "disappointing" | "poor" | "negative" | "toxic" | "broken" | "failed" | "useless" => Some("negative"),
+        "bad" | "terrible" | "horrible" | "awful" | "worst" | "hate" | "ugly" | "disgusting"
+        | "pathetic" | "dreadful" | "miserable" | "angry" | "sad" | "disappointing" | "poor"
+        | "negative" | "toxic" | "broken" | "failed" | "useless" => Some("negative"),
 
         _ => None,
     }

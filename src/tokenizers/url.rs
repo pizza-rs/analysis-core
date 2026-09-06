@@ -89,14 +89,20 @@ impl Tokenizer for UrlTokenizer {
 
         // Split off query
         let (before_query, query) = if let Some(q_pos) = before_fragment.find('?') {
-            (&before_fragment[..q_pos], Some(&before_fragment[q_pos + 1..]))
+            (
+                &before_fragment[..q_pos],
+                Some(&before_fragment[q_pos + 1..]),
+            )
         } else {
             (before_fragment, None)
         };
 
         // Split host and path
         let (host_port, path) = if let Some(slash_pos) = before_query.find('/') {
-            (&before_query[..slash_pos], Some(&before_query[slash_pos + 1..]))
+            (
+                &before_query[..slash_pos],
+                Some(&before_query[slash_pos + 1..]),
+            )
         } else {
             (before_query, None)
         };

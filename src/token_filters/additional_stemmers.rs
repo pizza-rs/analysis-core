@@ -77,8 +77,8 @@ fn stem_polish(word: &str) -> String {
     if len > 4 {
         let suffix: String = chars[len - 2..].iter().collect();
         match suffix.as_str() {
-            "ie" | "ej" | "em" | "ze" | "ię" | "ek" | "ce" | "mi" | "ka" | "ki" | "ko"
-            | "ny" | "na" | "ne" | "om" | "ów" => {
+            "ie" | "ej" | "em" | "ze" | "ię" | "ek" | "ce" | "mi" | "ka" | "ki" | "ko" | "ny"
+            | "na" | "ne" | "om" | "ów" => {
                 return chars[..len - 2].iter().collect();
             }
             _ => {}
@@ -133,7 +133,8 @@ fn stem_ukrainian(word: &str) -> String {
     if len > 7 {
         let suffix: String = chars[len - 5..].iter().collect();
         match suffix.as_str() {
-            "ський" | "ської" | "ським" | "ських" | "ність" | "ності" => {
+            "ський" | "ської" | "ським" | "ських" | "ність" | "ності" =>
+            {
                 return chars[..len - 5].iter().collect();
             }
             _ => {}
@@ -143,8 +144,8 @@ fn stem_ukrainian(word: &str) -> String {
     if len > 6 {
         let suffix: String = chars[len - 4..].iter().collect();
         match suffix.as_str() {
-            "ного" | "ному" | "ній" | "ним" | "них" | "ною" | "ної" | "ення" | "ання"
-            | "ство" | "ості" | "ість" => {
+            "ного" | "ному" | "ній" | "ним" | "них" | "ною" | "ної" | "ення" | "ання" | "ство"
+            | "ості" | "ість" => {
                 return chars[..len - 4].iter().collect();
             }
             _ => {}
@@ -154,8 +155,8 @@ fn stem_ukrainian(word: &str) -> String {
     if len > 5 {
         let suffix: String = chars[len - 3..].iter().collect();
         match suffix.as_str() {
-            "ого" | "ому" | "ій" | "им" | "их" | "ам" | "ах" | "ові" | "ами" | "ять"
-            | "ати" | "ити" | "ють" | "ені" | "ані" => {
+            "ого" | "ому" | "ій" | "им" | "их" | "ам" | "ах" | "ові" | "ами" | "ять" | "ати"
+            | "ити" | "ють" | "ені" | "ані" => {
                 return chars[..len - 3].iter().collect();
             }
             _ => {}
@@ -165,8 +166,8 @@ fn stem_ukrainian(word: &str) -> String {
     if len > 4 {
         let suffix: String = chars[len - 2..].iter().collect();
         match suffix.as_str() {
-            "ів" | "ок" | "ки" | "ко" | "ці" | "ти" | "ні" | "на" | "ну" | "не" | "но"
-            | "ем" | "ій" | "ям" | "ях" => {
+            "ів" | "ок" | "ки" | "ко" | "ці" | "ти" | "ні" | "на" | "ну" | "не" | "но" | "ем"
+            | "ій" | "ям" | "ях" => {
                 return chars[..len - 2].iter().collect();
             }
             _ => {}
@@ -453,8 +454,8 @@ fn stem_lithuanian(word: &str) -> String {
     if len > 4 {
         let suffix: String = chars[len - 2..].iter().collect();
         match suffix.as_str() {
-            "as" | "is" | "us" | "ys" | "os" | "ės" | "ai" | "ei" | "ui" | "am" | "om"
-            | "im" | "um" | "ėm" | "ti" => {
+            "as" | "is" | "us" | "ys" | "os" | "ės" | "ai" | "ei" | "ui" | "am" | "om" | "im"
+            | "um" | "ėm" | "ti" => {
                 return chars[..len - 2].iter().collect();
             }
             _ => {}
@@ -626,8 +627,8 @@ fn stem_estonian(word: &str) -> String {
         let len = result.len();
         let suffix = &result[len - 2..];
         match suffix {
-            "le" | "lt" | "ks" | "st" | "na" | "ga" | "ta" | "te" | "de" | "se" | "id"
-            | "il" | "is" => {
+            "le" | "lt" | "ks" | "st" | "na" | "ga" | "ta" | "te" | "de" | "se" | "id" | "il"
+            | "is" => {
                 result.truncate(len - 2);
                 return result;
             }
@@ -781,8 +782,8 @@ fn stem_slovenian(word: &str) -> String {
         let len = result.len();
         let suffix = &result[len - 2..];
         match suffix {
-            "om" | "em" | "ih" | "im" | "ov" | "ev" | "mi" | "ah" | "am" | "je" | "ni"
-            | "na" | "no" => {
+            "om" | "em" | "ih" | "im" | "ov" | "ev" | "mi" | "ah" | "am" | "je" | "ni" | "na"
+            | "no" => {
                 result.truncate(len - 2);
                 return result;
             }

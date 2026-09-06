@@ -121,12 +121,12 @@ pub use token_filters::UniqueTokenFilter;
 pub use token_filters::UppercaseTokenFilter;
 
 // ─── Token Filters: N-gram & Shingle ──────────────────────────────────────
-pub use token_filters::CommonGramsTokenFilter;
 pub use token_filters::CommonGramsQueryFilter;
-pub use token_filters::FixBrokenOffsetsFilter;
-pub use token_filters::RussianYoNormalizationTokenFilter;
+pub use token_filters::CommonGramsTokenFilter;
 pub use token_filters::EdgeNgramTokenFilter;
+pub use token_filters::FixBrokenOffsetsFilter;
 pub use token_filters::NgramTokenFilter;
+pub use token_filters::RussianYoNormalizationTokenFilter;
 pub use token_filters::ShingleTokenFilter;
 
 // ─── Token Filters: Pattern ────────────────────────────────────────────────
@@ -245,6 +245,8 @@ pub use token_filters::TamilStemTokenFilter;
 pub use token_filters::TeluguStemTokenFilter;
 
 // ─── Token Filters: Additional Lucene-Parity Filters ───────────────────────
+pub use token_filters::build_fixed_shingles;
+pub use token_filters::concatenate_tokens;
 pub use token_filters::CapitalizationTokenFilter;
 pub use token_filters::CodepointCountTokenFilter;
 pub use token_filters::ConcatenateGraphTokenFilter;
@@ -266,8 +268,6 @@ pub use token_filters::SpanishMinimalStemTokenFilter;
 pub use token_filters::SpanishPluralStemTokenFilter;
 pub use token_filters::SwedishMinimalStemTokenFilter;
 pub use token_filters::TypeAsSynonymTokenFilter;
-pub use token_filters::concatenate_tokens;
-pub use token_filters::build_fixed_shingles;
 
 // ─── Token Filters: Beyond-Lucene Innovative Filters ───────────────────────
 
@@ -379,8 +379,8 @@ pub use token_filters::SyllableCountTokenFilter;
 pub use token_filters::UuidDetectTokenFilter;
 
 // Text Transform
-pub use token_filters::CamelCaseTokenFilter;
 pub use token_filters::CamelCaseSplitTokenFilter;
+pub use token_filters::CamelCaseTokenFilter;
 pub use token_filters::CollapseRepeatsTokenFilter;
 pub use token_filters::KebabCaseTokenFilter;
 pub use token_filters::PadTokenFilter;
@@ -405,32 +405,32 @@ pub use token_filters::UrlPathTokenFilter;
 pub use token_filters::UrlSchemeTokenFilter;
 
 // ═══ Minority & Indigenous Language Filters ══════════════════════════════════
-pub use token_filters::HebrewFinalFormNormTokenFilter;
-pub use token_filters::HebrewNiqqudRemoveTokenFilter;
-pub use token_filters::HebrewStemTokenFilter;
-pub use token_filters::YiddishNormalizationTokenFilter;
-pub use token_filters::YiddishStemTokenFilter;
-pub use token_filters::ScottishGaelicLenitionTokenFilter;
-pub use token_filters::ScottishGaelicStopTokenFilter;
-pub use token_filters::TibetanTsekSegmentTokenFilter;
-pub use token_filters::TibetanPunctuationRemoveTokenFilter;
-pub use token_filters::TibetanStopSyllableTokenFilter;
-pub use token_filters::WelshMutationNormTokenFilter;
-pub use token_filters::WelshStopTokenFilter;
+pub use token_filters::AymaraStemTokenFilter;
+pub use token_filters::AymaraStopTokenFilter;
 pub use token_filters::CherokeeNormalizationTokenFilter;
 pub use token_filters::CherokeeTranslitNormTokenFilter;
-pub use token_filters::KhmerWordBoundaryTokenFilter;
-pub use token_filters::KhmerSignRemoveTokenFilter;
-pub use token_filters::QuechuaStemTokenFilter;
-pub use token_filters::QuechuaStopTokenFilter;
 pub use token_filters::GuaraniNormalizationTokenFilter;
 pub use token_filters::GuaraniStemTokenFilter;
 pub use token_filters::GuaraniStopTokenFilter;
-pub use token_filters::NavajoNormalizationTokenFilter;
-pub use token_filters::NavajoToneRemoveTokenFilter;
-pub use token_filters::NavajoStemTokenFilter;
-pub use token_filters::NavajoStopTokenFilter;
+pub use token_filters::HebrewFinalFormNormTokenFilter;
+pub use token_filters::HebrewNiqqudRemoveTokenFilter;
+pub use token_filters::HebrewStemTokenFilter;
+pub use token_filters::KhmerSignRemoveTokenFilter;
+pub use token_filters::KhmerWordBoundaryTokenFilter;
 pub use token_filters::NahuatlStemTokenFilter;
 pub use token_filters::NahuatlStopTokenFilter;
-pub use token_filters::AymaraStemTokenFilter;
-pub use token_filters::AymaraStopTokenFilter;
+pub use token_filters::NavajoNormalizationTokenFilter;
+pub use token_filters::NavajoStemTokenFilter;
+pub use token_filters::NavajoStopTokenFilter;
+pub use token_filters::NavajoToneRemoveTokenFilter;
+pub use token_filters::QuechuaStemTokenFilter;
+pub use token_filters::QuechuaStopTokenFilter;
+pub use token_filters::ScottishGaelicLenitionTokenFilter;
+pub use token_filters::ScottishGaelicStopTokenFilter;
+pub use token_filters::TibetanPunctuationRemoveTokenFilter;
+pub use token_filters::TibetanStopSyllableTokenFilter;
+pub use token_filters::TibetanTsekSegmentTokenFilter;
+pub use token_filters::WelshMutationNormTokenFilter;
+pub use token_filters::WelshStopTokenFilter;
+pub use token_filters::YiddishNormalizationTokenFilter;
+pub use token_filters::YiddishStemTokenFilter;

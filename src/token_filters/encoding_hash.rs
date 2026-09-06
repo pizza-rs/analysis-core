@@ -11,8 +11,16 @@ use pizza_engine::analysis::TokenFilter;
 /// Base64 encodes the token term.
 #[derive(Clone, Debug)]
 pub struct Base64EncodeTokenFilter;
-impl Base64EncodeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for Base64EncodeTokenFilter { fn default() -> Self { Self } }
+impl Base64EncodeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for Base64EncodeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for Base64EncodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -25,8 +33,16 @@ impl TokenFilter for Base64EncodeTokenFilter {
 /// Base64 decodes the token term (if valid base64).
 #[derive(Clone, Debug)]
 pub struct Base64DecodeTokenFilter;
-impl Base64DecodeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for Base64DecodeTokenFilter { fn default() -> Self { Self } }
+impl Base64DecodeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for Base64DecodeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for Base64DecodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -42,12 +58,25 @@ impl TokenFilter for Base64DecodeTokenFilter {
 /// Hex encodes the token bytes.
 #[derive(Clone, Debug)]
 pub struct HexEncodeTokenFilter;
-impl HexEncodeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HexEncodeTokenFilter { fn default() -> Self { Self } }
+impl HexEncodeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HexEncodeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HexEncodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
-        let hex: String = token.term.as_ref().bytes().map(|b| format!("{:02x}", b)).collect();
+        let hex: String = token
+            .term
+            .as_ref()
+            .bytes()
+            .map(|b| format!("{:02x}", b))
+            .collect();
         token.term = Cow::Owned(hex);
         (false, None)
     }
@@ -56,8 +85,16 @@ impl TokenFilter for HexEncodeTokenFilter {
 /// Hex decodes the token (if valid hex string).
 #[derive(Clone, Debug)]
 pub struct HexDecodeTokenFilter;
-impl HexDecodeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HexDecodeTokenFilter { fn default() -> Self { Self } }
+impl HexDecodeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HexDecodeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HexDecodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -81,8 +118,16 @@ impl TokenFilter for HexDecodeTokenFilter {
 /// URL-encodes (percent-encodes) the token.
 #[derive(Clone, Debug)]
 pub struct UrlEncodeTokenFilter;
-impl UrlEncodeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for UrlEncodeTokenFilter { fn default() -> Self { Self } }
+impl UrlEncodeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for UrlEncodeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for UrlEncodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -97,8 +142,16 @@ impl TokenFilter for UrlEncodeTokenFilter {
 /// URL-decodes (percent-decodes) the token.
 #[derive(Clone, Debug)]
 pub struct UrlDecodeTokenFilter;
-impl UrlDecodeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for UrlDecodeTokenFilter { fn default() -> Self { Self } }
+impl UrlDecodeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for UrlDecodeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for UrlDecodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -113,18 +166,29 @@ impl TokenFilter for UrlDecodeTokenFilter {
 /// ROT13 cipher transformation (reversible).
 #[derive(Clone, Debug)]
 pub struct Rot13TokenFilter;
-impl Rot13TokenFilter { pub fn new() -> Self { Self } }
-impl Default for Rot13TokenFilter { fn default() -> Self { Self } }
+impl Rot13TokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for Rot13TokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for Rot13TokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
-        let rotated: String = token.term.as_ref().chars().map(|c| {
-            match c {
+        let rotated: String = token
+            .term
+            .as_ref()
+            .chars()
+            .map(|c| match c {
                 'a'..='m' | 'A'..='M' => char::from(c as u8 + 13),
                 'n'..='z' | 'N'..='Z' => char::from(c as u8 - 13),
                 _ => c,
-            }
-        }).collect();
+            })
+            .collect();
         token.term = Cow::Owned(rotated);
         (false, None)
     }
@@ -133,8 +197,16 @@ impl TokenFilter for Rot13TokenFilter {
 /// FNV-1a 32-bit hash of the token, output as hex string.
 #[derive(Clone, Debug)]
 pub struct FnvHashTokenFilter;
-impl FnvHashTokenFilter { pub fn new() -> Self { Self } }
-impl Default for FnvHashTokenFilter { fn default() -> Self { Self } }
+impl FnvHashTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for FnvHashTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for FnvHashTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -147,8 +219,16 @@ impl TokenFilter for FnvHashTokenFilter {
 /// CRC32 hash of the token.
 #[derive(Clone, Debug)]
 pub struct Crc32TokenFilter;
-impl Crc32TokenFilter { pub fn new() -> Self { Self } }
-impl Default for Crc32TokenFilter { fn default() -> Self { Self } }
+impl Crc32TokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for Crc32TokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for Crc32TokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -164,10 +244,19 @@ pub struct MurmurHash3TokenFilter {
     pub seed: u32,
 }
 impl MurmurHash3TokenFilter {
-    pub fn new() -> Self { Self { seed: 0 } }
-    pub fn with_seed(seed: u32) -> Self { Self { seed } }
+    pub fn new() -> Self {
+        Self { seed: 0 }
+    }
+
+    pub fn with_seed(seed: u32) -> Self {
+        Self { seed }
+    }
 }
-impl Default for MurmurHash3TokenFilter { fn default() -> Self { Self::new() } }
+impl Default for MurmurHash3TokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for MurmurHash3TokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -184,14 +273,22 @@ pub struct HashSynonymTokenFilter {
 }
 
 #[derive(Clone, Debug, Copy)]
-pub enum HashAlgorithm { Fnv1a, Crc32, Murmur3 }
+pub enum HashAlgorithm {
+    Fnv1a,
+    Crc32,
+    Murmur3,
+}
 
 impl HashSynonymTokenFilter {
-    pub fn new(algorithm: HashAlgorithm) -> Self { Self { algorithm } }
+    pub fn new(algorithm: HashAlgorithm) -> Self {
+        Self { algorithm }
+    }
 }
 
 impl Default for HashSynonymTokenFilter {
-    fn default() -> Self { Self::new(HashAlgorithm::Fnv1a) }
+    fn default() -> Self {
+        Self::new(HashAlgorithm::Fnv1a)
+    }
 }
 
 impl TokenFilter for HashSynonymTokenFilter {
@@ -288,9 +385,7 @@ fn percent_decode(input: &str) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'%' && i + 2 < bytes.len() {
-            if let Ok(val) = u8::from_str_radix(
-                &input[i + 1..i + 3], 16
-            ) {
+            if let Ok(val) = u8::from_str_radix(&input[i + 1..i + 3], 16) {
                 result.push(val);
                 i += 3;
                 continue;
@@ -344,8 +439,12 @@ fn murmur3_32(data: &[u8], seed: u32) -> u32 {
 
     let tail = &data[nblocks * 4..];
     let mut k1: u32 = 0;
-    if tail.len() >= 3 { k1 ^= (tail[2] as u32) << 16; }
-    if tail.len() >= 2 { k1 ^= (tail[1] as u32) << 8; }
+    if tail.len() >= 3 {
+        k1 ^= (tail[2] as u32) << 16;
+    }
+    if tail.len() >= 2 {
+        k1 ^= (tail[1] as u32) << 8;
+    }
     if !tail.is_empty() {
         k1 ^= tail[0] as u32;
         k1 = k1.wrapping_mul(0xcc9e2d51);

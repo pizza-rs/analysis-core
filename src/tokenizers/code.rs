@@ -95,11 +95,7 @@ impl Tokenizer for CodeTokenizer {
                 // closing quote if it was actually consumed — otherwise the
                 // last character of an unterminated string would be lost.
                 let content_start = start + quote.len_utf8();
-                let content_end = if closed {
-                    i - quote.len_utf8()
-                } else {
-                    i
-                };
+                let content_end = if closed { i - quote.len_utf8() } else { i };
                 if content_start < content_end {
                     tokens.push(Token {
                         term: Cow::Borrowed(&text[content_start..content_end]),

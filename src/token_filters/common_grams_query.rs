@@ -1,11 +1,11 @@
 use alloc::borrow::Cow;
 use alloc::string::String;
-use alloc::vec::Vec;
 use alloc::sync::Arc;
-use std::sync::Mutex;
+use alloc::vec::Vec;
 use hashbrown::HashSet;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
+use std::sync::Mutex;
 
 /// Query-time companion to [`CommonGramsTokenFilter`].
 ///
@@ -103,13 +103,11 @@ impl TokenFilter for CommonGramsQueryFilter {
         // Current token is a unigram.
         // If there was a pending unigram, it was NOT followed by a bigram,
         // so it should have been emitted. We emit it as an extra token.
-        let emit_pending = state.pending.take().map(|p| {
-            Token {
-                term: Cow::Owned(p.term),
-                start_offset: p.start_offset,
-                end_offset: p.end_offset,
-                position: p.position,
-            }
+        let emit_pending = state.pending.take().map(|p| Token {
+            term: Cow::Owned(p.term),
+            start_offset: p.start_offset,
+            end_offset: p.end_offset,
+            position: p.position,
         });
 
         // Hold back the current unigram as pending
@@ -182,12 +180,10 @@ mod tests {
         // Input: ["the"(unigram), "the_cat"(bigram), "cat"(unigram), "sat"(unigram)]
         // Expected: "the" is pending → "the_cat" arrives → drop "the", emit "the_cat"
         //           "cat" is pending → "sat" arrives → emit "cat", "sat" pending
-        let result = run_filter(&filter, &[
-            ("the", 0),
-            ("the_cat", 0),
-            ("cat", 1),
-            ("sat", 2),
-        ]);
+        let result = run_filter(
+            &filter,
+            &[("the", 0), ("the_cat", 0), ("cat", 1), ("sat", 2)],
+        );
         // "the" → pending → dropped by bigram "the_cat"
         // "the_cat" → emitted
         // "cat" → pending
@@ -200,11 +196,7 @@ mod tests {
         let filter = CommonGramsQueryFilter::new();
 
         // All unigrams, no bigrams → all should pass (with one-token delay)
-        let result = run_filter(&filter, &[
-            ("hello", 0),
-            ("world", 1),
-            ("foo", 2),
-        ]);
+        let result = run_filter(&filter, &[("hello", 0), ("world", 1), ("foo", 2)]);
         // "hello" → pending
         // "world" → emit "hello", "world" pending
         // "foo" → emit "world", "foo" pending
@@ -216,12 +208,10 @@ mod tests {
         let filter = CommonGramsQueryFilter::new();
 
         // "the"(uni) "the_of"(bi) "of_new"(bi) "new"(uni)
-        let result = run_filter(&filter, &[
-            ("the", 0),
-            ("the_of", 0),
-            ("of_new", 1),
-            ("new", 2),
-        ]);
+        let result = run_filter(
+            &filter,
+            &[("the", 0), ("the_of", 0), ("of_new", 1), ("new", 2)],
+        );
         // "the" pending → dropped by "the_of"
         // "the_of" emitted
         // "of_new" emitted (no pending to drop)
@@ -233,11 +223,7 @@ mod tests {
     fn test_custom_separator() {
         let filter = CommonGramsQueryFilter::new().with_separator("-");
 
-        let result = run_filter(&filter, &[
-            ("city", 0),
-            ("city-of", 0),
-            ("of", 1),
-        ]);
+        let result = run_filter(&filter, &[("city", 0), ("city-of", 0), ("of", 1)]);
         // "city" pending → dropped by bigram "city-of"
         // "city-of" emitted
         // "of" pending

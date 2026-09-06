@@ -178,6 +178,10 @@ mod tests {
         let tok = SlidingWindowTokenizer::new(3, 5).with_preserve_original(false);
         let tokens = tok.tokenize("abc");
         let terms: Vec<&str> = tokens.iter().map(|t| t.term.as_ref()).collect();
-        assert!(terms.contains(&"abc"), "expected `abc` window, got {:?}", terms);
+        assert!(
+            terms.contains(&"abc"),
+            "expected `abc` window, got {:?}",
+            terms
+        );
     }
 }

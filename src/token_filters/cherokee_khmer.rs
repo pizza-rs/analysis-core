@@ -15,31 +15,38 @@ use pizza_engine::analysis::TokenFilter;
 #[derive(Clone, Debug)]
 pub struct CherokeeNormalizationTokenFilter;
 impl CherokeeNormalizationTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for CherokeeNormalizationTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for CherokeeNormalizationTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         let mut changed = false;
-        let normalized: String = text.chars().map(|c| {
-            let cp = c as u32;
-            // Cherokee Supplement lowercase (U+AB70–U+ABBF) → uppercase (U+13A0–U+13EF)
-            if (0xAB70..=0xABBF).contains(&cp) {
-                changed = true;
-                char::from_u32(cp - 0xAB70 + 0x13A0).unwrap_or(c)
-            }
-            // Cherokee block lowercase (U+13F8–U+13FD) → uppercase (U+13F0–U+13F5)
-            else if (0x13F8..=0x13FD).contains(&cp) {
-                changed = true;
-                char::from_u32(cp - 8).unwrap_or(c)
-            } else {
-                c
-            }
-        }).collect();
+        let normalized: String = text
+            .chars()
+            .map(|c| {
+                let cp = c as u32;
+                // Cherokee Supplement lowercase (U+AB70–U+ABBF) → uppercase (U+13A0–U+13EF)
+                if (0xAB70..=0xABBF).contains(&cp) {
+                    changed = true;
+                    char::from_u32(cp - 0xAB70 + 0x13A0).unwrap_or(c)
+                }
+                // Cherokee block lowercase (U+13F8–U+13FD) → uppercase (U+13F0–U+13F5)
+                else if (0x13F8..=0x13FD).contains(&cp) {
+                    changed = true;
+                    char::from_u32(cp - 8).unwrap_or(c)
+                } else {
+                    c
+                }
+            })
+            .collect();
 
         if changed {
             token.term = Cow::Owned(normalized);
@@ -54,10 +61,14 @@ impl TokenFilter for CherokeeNormalizationTokenFilter {
 #[derive(Clone, Debug)]
 pub struct CherokeeTranslitNormTokenFilter;
 impl CherokeeTranslitNormTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for CherokeeTranslitNormTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for CherokeeTranslitNormTokenFilter {
@@ -67,9 +78,9 @@ impl TokenFilter for CherokeeTranslitNormTokenFilter {
 
         // Normalize common Cherokee transliteration variants
         let normalized = lower
-            .replace("ts", "j")     // ts/j variation
-            .replace("qu", "kw")    // qu→kw normalization
-            .replace("tl", "hl");   // tl→hl variant
+            .replace("ts", "j") // ts/j variation
+            .replace("qu", "kw") // qu→kw normalization
+            .replace("tl", "hl"); // tl→hl variant
 
         if normalized != lower {
             token.term = Cow::Owned(normalized);
@@ -93,10 +104,14 @@ impl TokenFilter for CherokeeTranslitNormTokenFilter {
 #[derive(Clone, Debug)]
 pub struct KhmerWordBoundaryTokenFilter;
 impl KhmerWordBoundaryTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for KhmerWordBoundaryTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 const ZERO_WIDTH_SPACE: char = '\u{200B}';
@@ -107,19 +122,24 @@ impl TokenFilter for KhmerWordBoundaryTokenFilter {
         let text = token.term.to_string();
 
         // Only process text containing Khmer characters
-        if !text.chars().any(|c| (c as u32) >= 0x1780 && (c as u32) <= 0x17FF) {
+        if !text
+            .chars()
+            .any(|c| (c as u32) >= 0x1780 && (c as u32) <= 0x17FF)
+        {
             return (false, None);
         }
 
         // Split on ZWS and ZWNJ
-        let words: Vec<&str> = text.split(|c| c == ZERO_WIDTH_SPACE || c == ZERO_WIDTH_NON_JOINER)
+        let words: Vec<&str> = text
+            .split(|c| c == ZERO_WIDTH_SPACE || c == ZERO_WIDTH_NON_JOINER)
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .collect();
 
         if words.len() <= 1 {
             // Remove any remaining ZWS
-            let cleaned: String = text.chars()
+            let cleaned: String = text
+                .chars()
                 .filter(|c| *c != ZERO_WIDTH_SPACE && *c != ZERO_WIDTH_NON_JOINER)
                 .collect();
             if cleaned != text && !cleaned.is_empty() {
@@ -148,25 +168,32 @@ impl TokenFilter for KhmerWordBoundaryTokenFilter {
 #[derive(Clone, Debug)]
 pub struct KhmerSignRemoveTokenFilter;
 impl KhmerSignRemoveTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for KhmerSignRemoveTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for KhmerSignRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let cleaned: String = text.chars().filter(|c| {
-            let cp = *c as u32;
-            // Remove Khmer signs that are redundant for search
-            !matches!(cp,
-                0x17B4..=0x17B5 | // Inherent vowel markers (invisible)
-                0x17D4..=0x17DA | // Punctuation (khan, bariyoosan, etc.)
-                0x17DC |          // Avakrahasanya
-                0x17DD           // Atthacan
-            )
-        }).collect();
+        let cleaned: String = text
+            .chars()
+            .filter(|c| {
+                let cp = *c as u32;
+                // Remove Khmer signs that are redundant for search
+                !matches!(cp,
+                    0x17B4..=0x17B5 | // Inherent vowel markers (invisible)
+                    0x17D4..=0x17DA | // Punctuation (khan, bariyoosan, etc.)
+                    0x17DC |          // Avakrahasanya
+                    0x17DD           // Atthacan
+                )
+            })
+            .collect();
         if cleaned != text {
             if cleaned.is_empty() {
                 return (true, None);

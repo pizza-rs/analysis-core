@@ -247,10 +247,8 @@ impl Tokenizer for MarkdownTokenizer {
             // Map stripped offsets back to source `text` offsets so highlighting works.
             let src_start = src_offsets[start];
             // Find the last char of the word: its offset in `stripped` and its byte length.
-            let (last_char_off, last_char) = word
-                .char_indices()
-                .next_back()
-                .expect("word is non-empty");
+            let (last_char_off, last_char) =
+                word.char_indices().next_back().expect("word is non-empty");
             let last_src = src_offsets[start + last_char_off];
             let src_end = last_src + last_char.len_utf8() as u32;
 

@@ -135,9 +135,7 @@ fn irish_lowercase(text: &str) -> Option<String> {
         ('n', c) if c.is_uppercase() => true,
         ('m', 'B') => true,
         ('g', 'C') => true,
-        ('b', c) if c == 'P' || (c == 'h' && chars.len() > 2 && chars[2] == 'F') => {
-            true
-        }
+        ('b', c) if c == 'P' || (c == 'h' && chars.len() > 2 && chars[2] == 'F') => true,
         ('d', 'T') => true,
         _ => false,
     };

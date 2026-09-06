@@ -101,7 +101,9 @@ mod tests {
 
     #[test]
     fn test_keep_empty() {
-        let tok = TabSeparatedTokenizer::new().with_skip_empty(false).with_trim_fields(false);
+        let tok = TabSeparatedTokenizer::new()
+            .with_skip_empty(false)
+            .with_trim_fields(false);
         let tokens = tok.tokenize("a\t\tb");
         assert_eq!(tokens.len(), 3); // includes empty field
     }

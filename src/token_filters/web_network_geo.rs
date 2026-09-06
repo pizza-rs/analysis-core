@@ -14,9 +14,17 @@ pub struct DomainExtractTokenFilter {
     pub include_subdomain: bool,
 }
 impl DomainExtractTokenFilter {
-    pub fn new() -> Self { Self { include_subdomain: false } }
+    pub fn new() -> Self {
+        Self {
+            include_subdomain: false,
+        }
+    }
 }
-impl Default for DomainExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for DomainExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for DomainExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -31,8 +39,16 @@ impl TokenFilter for DomainExtractTokenFilter {
 /// Extracts the TLD (top-level domain): "www.example.co.uk" → "co.uk"
 #[derive(Clone, Debug)]
 pub struct TldExtractTokenFilter;
-impl TldExtractTokenFilter { pub fn new() -> Self { Self } }
-impl Default for TldExtractTokenFilter { fn default() -> Self { Self } }
+impl TldExtractTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for TldExtractTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for TldExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -53,8 +69,16 @@ impl TokenFilter for TldExtractTokenFilter {
 /// Extracts URL scheme: "https://..." → emits "_scheme:https"
 #[derive(Clone, Debug)]
 pub struct UrlSchemeTokenFilter;
-impl UrlSchemeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for UrlSchemeTokenFilter { fn default() -> Self { Self } }
+impl UrlSchemeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for UrlSchemeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for UrlSchemeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -76,8 +100,16 @@ impl TokenFilter for UrlSchemeTokenFilter {
 /// Extracts URL path segments as separate tokens.
 #[derive(Clone, Debug)]
 pub struct UrlPathTokenFilter;
-impl UrlPathTokenFilter { pub fn new() -> Self { Self } }
-impl Default for UrlPathTokenFilter { fn default() -> Self { Self } }
+impl UrlPathTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for UrlPathTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for UrlPathTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -97,12 +129,15 @@ impl TokenFilter for UrlPathTokenFilter {
             if segments.is_empty() {
                 return (false, None);
             }
-            let extras: Vec<Token<'a>> = segments.iter().map(|seg| Token {
-                term: Cow::Owned(String::from(*seg)),
-                start_offset: token.start_offset,
-                end_offset: token.end_offset,
-                position: token.position,
-            }).collect();
+            let extras: Vec<Token<'a>> = segments
+                .iter()
+                .map(|seg| Token {
+                    term: Cow::Owned(String::from(*seg)),
+                    start_offset: token.start_offset,
+                    end_offset: token.end_offset,
+                    position: token.position,
+                })
+                .collect();
             return (false, Some(extras));
         }
         (false, None)
@@ -113,15 +148,24 @@ impl TokenFilter for UrlPathTokenFilter {
 /// "192.168.1.1" → "192.168.001.001"
 #[derive(Clone, Debug)]
 pub struct IpNormalizationTokenFilter;
-impl IpNormalizationTokenFilter { pub fn new() -> Self { Self } }
-impl Default for IpNormalizationTokenFilter { fn default() -> Self { Self } }
+impl IpNormalizationTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for IpNormalizationTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for IpNormalizationTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         let parts: Vec<&str> = text.split('.').collect();
         if parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok()) {
-            let normalized = parts.iter()
+            let normalized = parts
+                .iter()
                 .map(|p| format!("{:03}", p.parse::<u8>().unwrap()))
                 .collect::<Vec<_>>()
                 .join(".");
@@ -134,8 +178,16 @@ impl TokenFilter for IpNormalizationTokenFilter {
 /// Converts IP to a numeric value for range queries.
 #[derive(Clone, Debug)]
 pub struct IpToNumericTokenFilter;
-impl IpToNumericTokenFilter { pub fn new() -> Self { Self } }
-impl Default for IpToNumericTokenFilter { fn default() -> Self { Self } }
+impl IpToNumericTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for IpToNumericTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for IpToNumericTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -163,8 +215,16 @@ impl TokenFilter for IpToNumericTokenFilter {
 /// Tags IP addresses with their class/type.
 #[derive(Clone, Debug)]
 pub struct IpClassifyTokenFilter;
-impl IpClassifyTokenFilter { pub fn new() -> Self { Self } }
-impl Default for IpClassifyTokenFilter { fn default() -> Self { Self } }
+impl IpClassifyTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for IpClassifyTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for IpClassifyTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -192,9 +252,15 @@ pub struct GeohashTokenFilter {
     pub precision: usize,
 }
 impl GeohashTokenFilter {
-    pub fn new(precision: usize) -> Self { Self { precision } }
+    pub fn new(precision: usize) -> Self {
+        Self { precision }
+    }
 }
-impl Default for GeohashTokenFilter { fn default() -> Self { Self::new(6) } }
+impl Default for GeohashTokenFilter {
+    fn default() -> Self {
+        Self::new(6)
+    }
+}
 
 impl TokenFilter for GeohashTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -202,7 +268,10 @@ impl TokenFilter for GeohashTokenFilter {
         // Try to parse "lat,lng" format
         let parts: Vec<&str> = text.split(',').collect();
         if parts.len() == 2 {
-            if let (Ok(lat), Ok(lng)) = (parts[0].trim().parse::<f64>(), parts[1].trim().parse::<f64>()) {
+            if let (Ok(lat), Ok(lng)) = (
+                parts[0].trim().parse::<f64>(),
+                parts[1].trim().parse::<f64>(),
+            ) {
                 if (-90.0..=90.0).contains(&lat) && (-180.0..=180.0).contains(&lng) {
                     let hash = encode_geohash(lat, lng, self.precision);
                     token.term = Cow::Owned(hash);
@@ -221,9 +290,18 @@ pub struct GeohashPrefixTokenFilter {
     pub max_precision: usize,
 }
 impl GeohashPrefixTokenFilter {
-    pub fn new(min: usize, max: usize) -> Self { Self { min_precision: min, max_precision: max } }
+    pub fn new(min: usize, max: usize) -> Self {
+        Self {
+            min_precision: min,
+            max_precision: max,
+        }
+    }
 }
-impl Default for GeohashPrefixTokenFilter { fn default() -> Self { Self::new(2, 6) } }
+impl Default for GeohashPrefixTokenFilter {
+    fn default() -> Self {
+        Self::new(2, 6)
+    }
+}
 
 impl TokenFilter for GeohashPrefixTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -254,10 +332,18 @@ pub struct UrlNormalizationTokenFilter {
 }
 impl UrlNormalizationTokenFilter {
     pub fn new() -> Self {
-        Self { remove_www: true, remove_trailing_slash: true, remove_fragment: true }
+        Self {
+            remove_www: true,
+            remove_trailing_slash: true,
+            remove_fragment: true,
+        }
     }
 }
-impl Default for UrlNormalizationTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for UrlNormalizationTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for UrlNormalizationTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -271,7 +357,7 @@ impl TokenFilter for UrlNormalizationTokenFilter {
         }
         // Lowercase scheme and host
         if let Some(pos) = text.find("://") {
-            let (scheme_host, rest) = if let Some(path_pos) = text[pos+3..].find('/') {
+            let (scheme_host, rest) = if let Some(path_pos) = text[pos + 3..].find('/') {
                 text.split_at(pos + 3 + path_pos)
             } else {
                 (text.as_str(), "")

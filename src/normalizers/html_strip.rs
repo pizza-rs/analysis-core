@@ -99,9 +99,8 @@ impl Normalizer for HtmlStripNormalizer {
 
                     // Numeric entity?
                     let decoded_numeric = entity.strip_prefix('#').and_then(|rest| {
-                        let cp = if let Some(hex) = rest
-                            .strip_prefix('x')
-                            .or_else(|| rest.strip_prefix('X'))
+                        let cp = if let Some(hex) =
+                            rest.strip_prefix('x').or_else(|| rest.strip_prefix('X'))
                         {
                             u32::from_str_radix(hex, 16).ok()
                         } else {

@@ -11,8 +11,16 @@ use pizza_engine::analysis::TokenFilter;
 /// Converts roman numerals to decimal: "XIV" → "14"
 #[derive(Clone, Debug)]
 pub struct RomanNumeralTokenFilter;
-impl RomanNumeralTokenFilter { pub fn new() -> Self { Self } }
-impl Default for RomanNumeralTokenFilter { fn default() -> Self { Self } }
+impl RomanNumeralTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for RomanNumeralTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for RomanNumeralTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -33,15 +41,24 @@ impl TokenFilter for RomanNumeralTokenFilter {
 /// Converts ordinals to their numeric form: "1st" → "1", "twenty-third" → "23"
 #[derive(Clone, Debug)]
 pub struct OrdinalTokenFilter;
-impl OrdinalTokenFilter { pub fn new() -> Self { Self } }
-impl Default for OrdinalTokenFilter { fn default() -> Self { Self } }
+impl OrdinalTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for OrdinalTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for OrdinalTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         let lower = text.to_lowercase();
         // Strip ordinal suffixes: 1st, 2nd, 3rd, 4th, etc.
-        let stripped = lower.strip_suffix("st")
+        let stripped = lower
+            .strip_suffix("st")
             .or_else(|| lower.strip_suffix("nd"))
             .or_else(|| lower.strip_suffix("rd"))
             .or_else(|| lower.strip_suffix("th"));
@@ -63,15 +80,32 @@ pub struct NumberNormTokenFilter {
     pub thousands_char: char,
 }
 impl NumberNormTokenFilter {
-    pub fn new() -> Self { Self { decimal_char: '.', thousands_char: ',' } }
-    pub fn european() -> Self { Self { decimal_char: ',', thousands_char: '.' } }
+    pub fn new() -> Self {
+        Self {
+            decimal_char: '.',
+            thousands_char: ',',
+        }
+    }
+
+    pub fn european() -> Self {
+        Self {
+            decimal_char: ',',
+            thousands_char: '.',
+        }
+    }
 }
-impl Default for NumberNormTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for NumberNormTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for NumberNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if !text.chars().any(|c| c.is_ascii_digit()) { return (false, None); }
+        if !text.chars().any(|c| c.is_ascii_digit()) {
+            return (false, None);
+        }
 
         let mut result = String::with_capacity(text.len());
         for c in text.chars() {
@@ -93,8 +127,16 @@ impl TokenFilter for NumberNormTokenFilter {
 /// Tags numbers with their magnitude: "42" → emits "_magnitude:tens"
 #[derive(Clone, Debug)]
 pub struct NumberMagnitudeTokenFilter;
-impl NumberMagnitudeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for NumberMagnitudeTokenFilter { fn default() -> Self { Self } }
+impl NumberMagnitudeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for NumberMagnitudeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for NumberMagnitudeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -116,8 +158,16 @@ impl TokenFilter for NumberMagnitudeTokenFilter {
 /// Converts hex numbers to decimal: "0xFF" → "255"
 #[derive(Clone, Debug)]
 pub struct HexToDecimalTokenFilter;
-impl HexToDecimalTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HexToDecimalTokenFilter { fn default() -> Self { Self } }
+impl HexToDecimalTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HexToDecimalTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HexToDecimalTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -141,8 +191,16 @@ impl TokenFilter for HexToDecimalTokenFilter {
 /// Converts binary notation to decimal: "0b1010" → "10"
 #[derive(Clone, Debug)]
 pub struct BinaryToDecimalTokenFilter;
-impl BinaryToDecimalTokenFilter { pub fn new() -> Self { Self } }
-impl Default for BinaryToDecimalTokenFilter { fn default() -> Self { Self } }
+impl BinaryToDecimalTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for BinaryToDecimalTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for BinaryToDecimalTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -166,8 +224,16 @@ impl TokenFilter for BinaryToDecimalTokenFilter {
 /// Converts octal to decimal: "0o777" → "511"
 #[derive(Clone, Debug)]
 pub struct OctalToDecimalTokenFilter;
-impl OctalToDecimalTokenFilter { pub fn new() -> Self { Self } }
-impl Default for OctalToDecimalTokenFilter { fn default() -> Self { Self } }
+impl OctalToDecimalTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for OctalToDecimalTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for OctalToDecimalTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -191,8 +257,16 @@ impl TokenFilter for OctalToDecimalTokenFilter {
 /// Normalizes numeric ranges: "10-20" → emits "10" and "20" as synonyms
 #[derive(Clone, Debug)]
 pub struct NumericRangeTokenFilter;
-impl NumericRangeTokenFilter { pub fn new() -> Self { Self } }
-impl Default for NumericRangeTokenFilter { fn default() -> Self { Self } }
+impl NumericRangeTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for NumericRangeTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for NumericRangeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -204,7 +278,8 @@ impl TokenFilter for NumericRangeTokenFilter {
                 let right = &text[pos + sep.len()..];
                 if left.chars().all(|c| c.is_ascii_digit() || c == '.')
                     && right.chars().all(|c| c.is_ascii_digit() || c == '.')
-                    && !left.is_empty() && !right.is_empty()
+                    && !left.is_empty()
+                    && !right.is_empty()
                 {
                     let t1 = Token {
                         term: Cow::Owned(String::from(left)),
@@ -229,8 +304,16 @@ impl TokenFilter for NumericRangeTokenFilter {
 /// Converts file size strings: "1.5GB" → emits "_bytes:1610612736"
 #[derive(Clone, Debug)]
 pub struct FileSizeNormTokenFilter;
-impl FileSizeNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for FileSizeNormTokenFilter { fn default() -> Self { Self } }
+impl FileSizeNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for FileSizeNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for FileSizeNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -252,8 +335,16 @@ impl TokenFilter for FileSizeNormTokenFilter {
 /// Converts duration strings: "2h30m" → emits "_seconds:9000"
 #[derive(Clone, Debug)]
 pub struct DurationNormTokenFilter;
-impl DurationNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for DurationNormTokenFilter { fn default() -> Self { Self } }
+impl DurationNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for DurationNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for DurationNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -274,8 +365,16 @@ impl TokenFilter for DurationNormTokenFilter {
 /// Normalizes percentage notation: "85%" → "0.85", emits "_pct:85"
 #[derive(Clone, Debug)]
 pub struct PercentNormTokenFilter;
-impl PercentNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for PercentNormTokenFilter { fn default() -> Self { Self } }
+impl PercentNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for PercentNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for PercentNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -302,7 +401,11 @@ impl TokenFilter for PercentNormTokenFilter {
 fn parse_roman_numeral(s: &str) -> Option<u32> {
     let upper = s.to_uppercase();
     let chars: Vec<char> = upper.chars().collect();
-    if chars.is_empty() || !chars.iter().all(|c| matches!(c, 'I' | 'V' | 'X' | 'L' | 'C' | 'D' | 'M')) {
+    if chars.is_empty()
+        || !chars
+            .iter()
+            .all(|c| matches!(c, 'I' | 'V' | 'X' | 'L' | 'C' | 'D' | 'M'))
+    {
         return None;
     }
     let mut total = 0u32;
@@ -325,18 +428,31 @@ fn parse_roman_numeral(s: &str) -> Option<u32> {
         }
         prev = val;
     }
-    if total > 0 { Some(total) } else { None }
+    if total > 0 {
+        Some(total)
+    } else {
+        None
+    }
 }
 
 fn get_magnitude(n: f64) -> &'static str {
-    if n < 1.0 { "fraction" }
-    else if n < 10.0 { "ones" }
-    else if n < 100.0 { "tens" }
-    else if n < 1_000.0 { "hundreds" }
-    else if n < 1_000_000.0 { "thousands" }
-    else if n < 1_000_000_000.0 { "millions" }
-    else if n < 1_000_000_000_000.0 { "billions" }
-    else { "trillions" }
+    if n < 1.0 {
+        "fraction"
+    } else if n < 10.0 {
+        "ones"
+    } else if n < 100.0 {
+        "tens"
+    } else if n < 1_000.0 {
+        "hundreds"
+    } else if n < 1_000_000.0 {
+        "thousands"
+    } else if n < 1_000_000_000.0 {
+        "millions"
+    } else if n < 1_000_000_000_000.0 {
+        "billions"
+    } else {
+        "trillions"
+    }
 }
 
 fn parse_file_size(s: &str) -> Option<u64> {
@@ -372,7 +488,9 @@ fn parse_duration(s: &str) -> Option<u64> {
         if c.is_ascii_digit() || c == '.' {
             current_num.push(c);
         } else {
-            if current_num.is_empty() { continue; }
+            if current_num.is_empty() {
+                continue;
+            }
             let val: f64 = current_num.parse().ok()?;
             current_num.clear();
             let multiplier = match c {
@@ -386,5 +504,9 @@ fn parse_duration(s: &str) -> Option<u64> {
             found_any = true;
         }
     }
-    if found_any { Some(total_seconds) } else { None }
+    if found_any {
+        Some(total_seconds)
+    } else {
+        None
+    }
 }

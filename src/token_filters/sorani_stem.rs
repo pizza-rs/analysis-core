@@ -97,7 +97,9 @@ impl TokenFilter for SoraniStemTokenFilter {
             len - 3
         }
         // demonstrative singular
-        else if len > 5 && (ends_with_str(&chars[..len], "ایە") || ends_with_str(&chars[..len], "ەیە")) {
+        else if len > 5
+            && (ends_with_str(&chars[..len], "ایە") || ends_with_str(&chars[..len], "ەیە"))
+        {
             len - 2
         } else if len > 4 && ends_with_str(&chars[..len], "ە") {
             len - 1

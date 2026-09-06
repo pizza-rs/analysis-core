@@ -11,8 +11,16 @@ use pizza_engine::analysis::TokenFilter;
 /// Removes invisible/zero-width characters that can be used for attacks.
 #[derive(Clone, Debug)]
 pub struct InvisibleCharRemoveTokenFilter;
-impl InvisibleCharRemoveTokenFilter { pub fn new() -> Self { Self } }
-impl Default for InvisibleCharRemoveTokenFilter { fn default() -> Self { Self } }
+impl InvisibleCharRemoveTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for InvisibleCharRemoveTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for InvisibleCharRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -31,8 +39,16 @@ impl TokenFilter for InvisibleCharRemoveTokenFilter {
 /// Removes zero-width characters specifically.
 #[derive(Clone, Debug)]
 pub struct ZeroWidthRemoveTokenFilter;
-impl ZeroWidthRemoveTokenFilter { pub fn new() -> Self { Self } }
-impl Default for ZeroWidthRemoveTokenFilter { fn default() -> Self { Self } }
+impl ZeroWidthRemoveTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for ZeroWidthRemoveTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for ZeroWidthRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -51,8 +67,16 @@ impl TokenFilter for ZeroWidthRemoveTokenFilter {
 /// Strips BiDi (bidirectional) control characters used for text spoofing.
 #[derive(Clone, Debug)]
 pub struct BiDiStripTokenFilter;
-impl BiDiStripTokenFilter { pub fn new() -> Self { Self } }
-impl Default for BiDiStripTokenFilter { fn default() -> Self { Self } }
+impl BiDiStripTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for BiDiStripTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for BiDiStripTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -72,8 +96,16 @@ impl TokenFilter for BiDiStripTokenFilter {
 /// e.g. Cyrillic 'а' → Latin 'a', fullwidth 'Ａ' → 'A'
 #[derive(Clone, Debug)]
 pub struct ConfusableNormTokenFilter;
-impl ConfusableNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for ConfusableNormTokenFilter { fn default() -> Self { Self } }
+impl ConfusableNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for ConfusableNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for ConfusableNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -89,8 +121,16 @@ impl TokenFilter for ConfusableNormTokenFilter {
 /// Normalizes common homoglyphs (visual lookalikes) to canonical ASCII.
 #[derive(Clone, Debug)]
 pub struct HomoglyphNormTokenFilter;
-impl HomoglyphNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HomoglyphNormTokenFilter { fn default() -> Self { Self } }
+impl HomoglyphNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HomoglyphNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HomoglyphNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -106,8 +146,16 @@ impl TokenFilter for HomoglyphNormTokenFilter {
 /// Detects mixed scripts in a single token (potential spoofing).
 #[derive(Clone, Debug)]
 pub struct MixedScriptDetectTokenFilter;
-impl MixedScriptDetectTokenFilter { pub fn new() -> Self { Self } }
-impl Default for MixedScriptDetectTokenFilter { fn default() -> Self { Self } }
+impl MixedScriptDetectTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for MixedScriptDetectTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for MixedScriptDetectTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -128,23 +176,35 @@ impl TokenFilter for MixedScriptDetectTokenFilter {
 /// Normalizes fullwidth characters to ASCII equivalents: "Ｈｅｌｌｏ" → "Hello"
 #[derive(Clone, Debug)]
 pub struct FullwidthNormTokenFilter;
-impl FullwidthNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for FullwidthNormTokenFilter { fn default() -> Self { Self } }
+impl FullwidthNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for FullwidthNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for FullwidthNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let normalized: String = text.chars().map(|c| {
-            let cp = c as u32;
-            // Fullwidth ASCII variants: U+FF01 to U+FF5E → U+0021 to U+007E
-            if (0xFF01..=0xFF5E).contains(&cp) {
-                char::from_u32(cp - 0xFF01 + 0x0021).unwrap_or(c)
-            } else if cp == 0x3000 { // Ideographic space → regular space
-                ' '
-            } else {
-                c
-            }
-        }).collect();
+        let normalized: String = text
+            .chars()
+            .map(|c| {
+                let cp = c as u32;
+                // Fullwidth ASCII variants: U+FF01 to U+FF5E → U+0021 to U+007E
+                if (0xFF01..=0xFF5E).contains(&cp) {
+                    char::from_u32(cp - 0xFF01 + 0x0021).unwrap_or(c)
+                } else if cp == 0x3000 {
+                    // Ideographic space → regular space
+                    ' '
+                } else {
+                    c
+                }
+            })
+            .collect();
         if normalized != text {
             token.term = Cow::Owned(normalized);
         }
@@ -155,17 +215,28 @@ impl TokenFilter for FullwidthNormTokenFilter {
 /// Strips diacritical marks/combining characters from text.
 #[derive(Clone, Debug)]
 pub struct DiacriticStripTokenFilter;
-impl DiacriticStripTokenFilter { pub fn new() -> Self { Self } }
-impl Default for DiacriticStripTokenFilter { fn default() -> Self { Self } }
+impl DiacriticStripTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for DiacriticStripTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for DiacriticStripTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let stripped: String = text.chars().filter(|c| {
-            // Combining diacritical marks: U+0300 to U+036F
-            let cp = *c as u32;
-            !(0x0300..=0x036F).contains(&cp)
-        }).collect();
+        let stripped: String = text
+            .chars()
+            .filter(|c| {
+                // Combining diacritical marks: U+0300 to U+036F
+                let cp = *c as u32;
+                !(0x0300..=0x036F).contains(&cp)
+            })
+            .collect();
         if stripped.len() != text.len() {
             token.term = Cow::Owned(stripped);
         }
@@ -176,8 +247,16 @@ impl TokenFilter for DiacriticStripTokenFilter {
 /// Detects and tags tokens that contain emoji.
 #[derive(Clone, Debug)]
 pub struct EmojiPresenceTokenFilter;
-impl EmojiPresenceTokenFilter { pub fn new() -> Self { Self } }
-impl Default for EmojiPresenceTokenFilter { fn default() -> Self { Self } }
+impl EmojiPresenceTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for EmojiPresenceTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for EmojiPresenceTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -293,7 +372,9 @@ fn has_mixed_scripts(s: &str) -> bool {
     let mut has_cyrillic = false;
     let mut has_greek = false;
     for c in s.chars() {
-        if !c.is_alphabetic() { continue; }
+        if !c.is_alphabetic() {
+            continue;
+        }
         let cp = c as u32;
         match cp {
             0x0041..=0x007A | 0x00C0..=0x024F => has_latin = true,

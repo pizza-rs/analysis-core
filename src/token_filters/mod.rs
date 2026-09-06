@@ -383,8 +383,8 @@ pub use text_metrics::SyllableCountTokenFilter;
 pub use text_metrics::UuidDetectTokenFilter;
 
 // Text Transform
-pub use text_transform::CamelCaseTokenFilter;
 pub use text_transform::CamelCaseSplitTokenFilter;
+pub use text_transform::CamelCaseTokenFilter;
 pub use text_transform::CollapseRepeatsTokenFilter;
 pub use text_transform::KebabCaseTokenFilter;
 pub use text_transform::PadTokenFilter;

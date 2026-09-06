@@ -18,10 +18,14 @@ use pizza_engine::analysis::TokenFilter;
 #[derive(Clone, Debug)]
 pub struct WelshMutationNormTokenFilter;
 impl WelshMutationNormTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for WelshMutationNormTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for WelshMutationNormTokenFilter {
@@ -147,10 +151,14 @@ fn reverse_aspirate_mutation(chars: &[char]) -> Option<String> {
 #[derive(Clone, Debug)]
 pub struct WelshStopTokenFilter;
 impl WelshStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for WelshStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for WelshStopTokenFilter {
@@ -164,19 +172,83 @@ impl TokenFilter for WelshStopTokenFilter {
 }
 
 fn is_welsh_stop(word: &str) -> bool {
-    matches!(word,
-        "a" | "ac" | "am" | "ar" | "at" | "â" |
-        "bod" | "bydd" | "yn" | "y" | "yr" |
-        "i" | "ei" | "eu" | "fy" | "dy" | "ein" | "eich" |
-        "mae" | "maen" | "yw" | "ydy" | "oedd" | "roedd" |
-        "o" | "gan" | "gyda" | "heb" | "rhwng" | "wrth" |
-        "dan" | "tan" | "dros" | "tros" | "drwy" | "trwy" |
-        "er" | "ers" | "hyd" | "nes" |
-        "ni" | "chi" | "nhw" | "fe" | "hi" | "fi" |
-        "hon" | "hyn" | "hwn" | "hynny" | "hwnnw" |
-        "pan" | "pe" | "os" | "ond" | "neu" | "na" | "nid" |
-        "dim" | "un" | "dau" | "dwy" | "tri" | "tair" |
-        "wedi" | "cyn" | "ar" | "mewn" | "allan" | "eto" |
-        "hefyd" | "iawn" | "felly" | "wedyn" | "nawr" | "yma" | "yna"
+    matches!(
+        word,
+        "a" | "ac"
+            | "am"
+            | "ar"
+            | "at"
+            | "â"
+            | "bod"
+            | "bydd"
+            | "yn"
+            | "y"
+            | "yr"
+            | "i"
+            | "ei"
+            | "eu"
+            | "fy"
+            | "dy"
+            | "ein"
+            | "eich"
+            | "mae"
+            | "maen"
+            | "yw"
+            | "ydy"
+            | "oedd"
+            | "roedd"
+            | "o"
+            | "gan"
+            | "gyda"
+            | "heb"
+            | "rhwng"
+            | "wrth"
+            | "dan"
+            | "tan"
+            | "dros"
+            | "tros"
+            | "drwy"
+            | "trwy"
+            | "er"
+            | "ers"
+            | "hyd"
+            | "nes"
+            | "ni"
+            | "chi"
+            | "nhw"
+            | "fe"
+            | "hi"
+            | "fi"
+            | "hon"
+            | "hyn"
+            | "hwn"
+            | "hynny"
+            | "hwnnw"
+            | "pan"
+            | "pe"
+            | "os"
+            | "ond"
+            | "neu"
+            | "na"
+            | "nid"
+            | "dim"
+            | "un"
+            | "dau"
+            | "dwy"
+            | "tri"
+            | "tair"
+            | "wedi"
+            | "cyn"
+            | "ar"
+            | "mewn"
+            | "allan"
+            | "eto"
+            | "hefyd"
+            | "iawn"
+            | "felly"
+            | "wedyn"
+            | "nawr"
+            | "yma"
+            | "yna"
     )
 }

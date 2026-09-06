@@ -34,7 +34,11 @@ impl TokenFilter for EnglishMinimalStemTokenFilter {
         let new_len = match chars[len - 2] {
             'u' | 's' => len, // not a plural form
             'e' => {
-                if len > 3 && chars[len - 3] == 'i' && chars[len - 4] != 'a' && chars[len - 4] != 'e' {
+                if len > 3
+                    && chars[len - 3] == 'i'
+                    && chars[len - 4] != 'a'
+                    && chars[len - 4] != 'e'
+                {
                     // -ies → -y (but not -aies, -eies)
                     let mut new_chars = chars[..len - 2].to_vec();
                     new_chars[len - 3] = 'y';

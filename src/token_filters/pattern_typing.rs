@@ -17,9 +17,7 @@ impl PatternTypingTokenFilter {
         Self {
             rules: rules
                 .iter()
-                .filter_map(|(pat, tag)| {
-                    Regex::new(pat).ok().map(|r| (r, String::from(*tag)))
-                })
+                .filter_map(|(pat, tag)| Regex::new(pat).ok().map(|r| (r, String::from(*tag))))
                 .collect(),
         }
     }

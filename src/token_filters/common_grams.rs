@@ -1,11 +1,11 @@
 use alloc::borrow::Cow;
 use alloc::string::String;
-use alloc::vec::Vec;
 use alloc::sync::Arc;
-use std::sync::Mutex;
+use alloc::vec::Vec;
 use hashbrown::HashSet;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
+use std::sync::Mutex;
 
 /// Creates bigrams of adjacent tokens when one or both are "common words"
 /// (similar to stop words).
@@ -161,8 +161,7 @@ mod tests {
 
     #[test]
     fn test_common_grams_ignore_case() {
-        let filter =
-            CommonGramsTokenFilter::new(vec!["the".to_string()]).with_ignore_case(true);
+        let filter = CommonGramsTokenFilter::new(vec!["the".to_string()]).with_ignore_case(true);
 
         let mut t1 = make_token("hello", 0);
         filter.filter(&mut t1);
@@ -188,8 +187,7 @@ mod tests {
 
     #[test]
     fn test_common_grams_custom_separator() {
-        let filter =
-            CommonGramsTokenFilter::new(vec!["of".to_string()]).with_separator("-");
+        let filter = CommonGramsTokenFilter::new(vec!["of".to_string()]).with_separator("-");
 
         let mut t1 = make_token("city", 0);
         filter.filter(&mut t1);
@@ -238,8 +236,14 @@ mod tests {
         let (_, extra) = filter.filter(&mut t2);
         let extra = extra.unwrap();
         assert_eq!(extra[0].term.as_ref(), "city_of");
-        assert_eq!(extra[0].start_offset, 0, "bigram start = first token's start");
+        assert_eq!(
+            extra[0].start_offset, 0,
+            "bigram start = first token's start"
+        );
         assert_eq!(extra[0].end_offset, 7, "bigram end = second token's end");
-        assert_eq!(extra[0].position, 0, "bigram position = first token's position");
+        assert_eq!(
+            extra[0].position, 0,
+            "bigram position = first token's position"
+        );
     }
 }

@@ -17,10 +17,15 @@ pub struct EmojiToTextTokenFilter {
 
 impl EmojiToTextTokenFilter {
     pub fn new() -> Self {
-        Self { keep_original: false }
+        Self {
+            keep_original: false,
+        }
     }
+
     pub fn keeping_original() -> Self {
-        Self { keep_original: true }
+        Self {
+            keep_original: true,
+        }
     }
 }
 
@@ -68,11 +73,15 @@ impl TokenFilter for EmojiToTextTokenFilter {
 pub struct EmojiRemoveTokenFilter;
 
 impl EmojiRemoveTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for EmojiRemoveTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for EmojiRemoveTokenFilter {
@@ -97,12 +106,16 @@ pub struct EmojiExtractTokenFilter {
 
 impl EmojiExtractTokenFilter {
     pub fn new() -> Self {
-        Self { remove_from_original: false }
+        Self {
+            remove_from_original: false,
+        }
     }
 }
 
 impl Default for EmojiExtractTokenFilter {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TokenFilter for EmojiExtractTokenFilter {
@@ -141,11 +154,15 @@ impl TokenFilter for EmojiExtractTokenFilter {
 pub struct EmojiSentimentTokenFilter;
 
 impl EmojiSentimentTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for EmojiSentimentTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for EmojiSentimentTokenFilter {
@@ -190,11 +207,15 @@ impl TokenFilter for EmojiSentimentTokenFilter {
 pub struct EmoticonToTextTokenFilter;
 
 impl EmoticonToTextTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl Default for EmoticonToTextTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for EmoticonToTextTokenFilter {
@@ -344,13 +365,25 @@ fn emoji_to_description(c: char) -> Option<&'static str> {
 fn emoji_sentiment(c: char) -> i32 {
     match c as u32 {
         // Positive
-        0x1F600..=0x1F60A | 0x1F60D..=0x1F60E | 0x1F618..=0x1F61A |
-        0x1F44D | 0x1F44F | 0x1F4AF | 0x2764 | 0x1F495..=0x1F49C |
-        0x1F525 | 0x1F389..=0x1F38A | 0x1F3C6 | 0x1F680 | 0x2B50 |
-        0x1F31F | 0x1F308 => 1,
+        0x1F600..=0x1F60A
+        | 0x1F60D..=0x1F60E
+        | 0x1F618..=0x1F61A
+        | 0x1F44D
+        | 0x1F44F
+        | 0x1F4AF
+        | 0x2764
+        | 0x1F495..=0x1F49C
+        | 0x1F525
+        | 0x1F389..=0x1F38A
+        | 0x1F3C6
+        | 0x1F680
+        | 0x2B50
+        | 0x1F31F
+        | 0x1F308 => 1,
         // Negative
-        0x1F61E..=0x1F625 | 0x1F627..=0x1F62D | 0x1F630..=0x1F631 |
-        0x1F44E | 0x1F494 | 0x1F4A9 => -1,
+        0x1F61E..=0x1F625 | 0x1F627..=0x1F62D | 0x1F630..=0x1F631 | 0x1F44E | 0x1F494 | 0x1F4A9 => {
+            -1
+        }
         _ => 0,
     }
 }

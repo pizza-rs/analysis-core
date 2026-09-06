@@ -14,9 +14,17 @@ pub struct CharCountTokenFilter {
     pub prefix: String,
 }
 impl CharCountTokenFilter {
-    pub fn new() -> Self { Self { prefix: String::from("_len:") } }
+    pub fn new() -> Self {
+        Self {
+            prefix: String::from("_len:"),
+        }
+    }
 }
-impl Default for CharCountTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for CharCountTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for CharCountTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -34,8 +42,16 @@ impl TokenFilter for CharCountTokenFilter {
 /// Emits the byte length as a synonym.
 #[derive(Clone, Debug)]
 pub struct ByteLengthTokenFilter;
-impl ByteLengthTokenFilter { pub fn new() -> Self { Self } }
-impl Default for ByteLengthTokenFilter { fn default() -> Self { Self } }
+impl ByteLengthTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for ByteLengthTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for ByteLengthTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -57,9 +73,18 @@ pub struct LengthBandTokenFilter {
     pub medium_max: usize,
 }
 impl LengthBandTokenFilter {
-    pub fn new() -> Self { Self { short_max: 3, medium_max: 8 } }
+    pub fn new() -> Self {
+        Self {
+            short_max: 3,
+            medium_max: 8,
+        }
+    }
 }
-impl Default for LengthBandTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for LengthBandTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for LengthBandTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -84,8 +109,16 @@ impl TokenFilter for LengthBandTokenFilter {
 /// Estimates syllable count and emits it.
 #[derive(Clone, Debug)]
 pub struct SyllableCountTokenFilter;
-impl SyllableCountTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SyllableCountTokenFilter { fn default() -> Self { Self } }
+impl SyllableCountTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SyllableCountTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SyllableCountTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -104,8 +137,16 @@ impl TokenFilter for SyllableCountTokenFilter {
 /// High entropy → likely random/hashed, low entropy → likely natural text.
 #[derive(Clone, Debug)]
 pub struct EntropyTokenFilter;
-impl EntropyTokenFilter { pub fn new() -> Self { Self } }
-impl Default for EntropyTokenFilter { fn default() -> Self { Self } }
+impl EntropyTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for EntropyTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for EntropyTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -130,8 +171,16 @@ impl TokenFilter for EntropyTokenFilter {
 /// Detects the predominant script of the token text.
 #[derive(Clone, Debug)]
 pub struct ScriptTagTokenFilter;
-impl ScriptTagTokenFilter { pub fn new() -> Self { Self } }
-impl Default for ScriptTagTokenFilter { fn default() -> Self { Self } }
+impl ScriptTagTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for ScriptTagTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for ScriptTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -149,8 +198,16 @@ impl TokenFilter for ScriptTagTokenFilter {
 /// Detects the likely language of a token (simple heuristic).
 #[derive(Clone, Debug)]
 pub struct LanguageTagTokenFilter;
-impl LanguageTagTokenFilter { pub fn new() -> Self { Self } }
-impl Default for LanguageTagTokenFilter { fn default() -> Self { Self } }
+impl LanguageTagTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for LanguageTagTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for LanguageTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -168,8 +225,16 @@ impl TokenFilter for LanguageTagTokenFilter {
 /// Detects if a token looks like a UUID/GUID.
 #[derive(Clone, Debug)]
 pub struct UuidDetectTokenFilter;
-impl UuidDetectTokenFilter { pub fn new() -> Self { Self } }
-impl Default for UuidDetectTokenFilter { fn default() -> Self { Self } }
+impl UuidDetectTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for UuidDetectTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for UuidDetectTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -193,9 +258,15 @@ pub struct EntropyFilterTokenFilter {
     pub max_entropy: f64,
 }
 impl EntropyFilterTokenFilter {
-    pub fn new(max_entropy: f64) -> Self { Self { max_entropy } }
+    pub fn new(max_entropy: f64) -> Self {
+        Self { max_entropy }
+    }
 }
-impl Default for EntropyFilterTokenFilter { fn default() -> Self { Self::new(4.5) } }
+impl Default for EntropyFilterTokenFilter {
+    fn default() -> Self {
+        Self::new(4.5)
+    }
+}
 
 impl TokenFilter for EntropyFilterTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -212,7 +283,9 @@ impl TokenFilter for EntropyFilterTokenFilter {
 fn count_syllables(word: &str) -> usize {
     let lower = word.to_lowercase();
     let chars: Vec<char> = lower.chars().collect();
-    if chars.is_empty() { return 0; }
+    if chars.is_empty() {
+        return 0;
+    }
     let mut count = 0usize;
     let mut prev_vowel = false;
     for (i, &c) in chars.iter().enumerate() {
@@ -223,14 +296,25 @@ fn count_syllables(word: &str) -> usize {
         prev_vowel = is_v;
     }
     // Silent 'e' at end
-    if chars.len() > 2 && chars[chars.len() - 1] == 'e' && !matches!(chars[chars.len() - 2], 'a' | 'e' | 'i' | 'o' | 'u') {
-        if count > 1 { count -= 1; }
+    if chars.len() > 2
+        && chars[chars.len() - 1] == 'e'
+        && !matches!(chars[chars.len() - 2], 'a' | 'e' | 'i' | 'o' | 'u')
+    {
+        if count > 1 {
+            count -= 1;
+        }
     }
-    if count == 0 { 1 } else { count }
+    if count == 0 {
+        1
+    } else {
+        count
+    }
 }
 
 fn shannon_entropy(s: &str) -> f64 {
-    if s.is_empty() { return 0.0; }
+    if s.is_empty() {
+        return 0.0;
+    }
     let mut freq = [0u32; 256];
     let len = s.len() as f64;
     for b in s.bytes() {
@@ -291,8 +375,15 @@ fn detect_language_heuristic(s: &str) -> &'static str {
 }
 
 fn is_uuid(s: &str) -> bool {
-    if s.len() != 36 { return false; }
+    if s.len() != 36 {
+        return false;
+    }
     let bytes = s.as_bytes();
-    bytes[8] == b'-' && bytes[13] == b'-' && bytes[18] == b'-' && bytes[23] == b'-'
-        && s.chars().filter(|c| *c != '-').all(|c| c.is_ascii_hexdigit())
+    bytes[8] == b'-'
+        && bytes[13] == b'-'
+        && bytes[18] == b'-'
+        && bytes[23] == b'-'
+        && s.chars()
+            .filter(|c| *c != '-')
+            .all(|c| c.is_ascii_hexdigit())
 }

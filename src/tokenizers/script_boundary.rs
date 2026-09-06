@@ -51,19 +51,19 @@ impl ScriptBoundaryTokenizer {
         } else {
             let cp = c as u32;
             match cp {
-                0x0400..=0x04FF | 0x0500..=0x052F => 2,     // Cyrillic
-                0x0370..=0x03FF => 3,                         // Greek
-                0x0600..=0x06FF | 0x0750..=0x077F => 4,      // Arabic
-                0x0590..=0x05FF => 5,                          // Hebrew
-                0x0900..=0x097F => 6,                          // Devanagari
-                0x4E00..=0x9FFF | 0x3400..=0x4DBF => 7,      // CJK Ideographs
-                0x3040..=0x309F => 8,                          // Hiragana
-                0x30A0..=0x30FF => 9,                          // Katakana
-                0xAC00..=0xD7AF => 10,                         // Hangul
-                0x0E00..=0x0E7F => 11,                         // Thai
-                0x00C0..=0x024F | 0x1E00..=0x1EFF => 1,      // Latin extended
-                _ if c.is_alphabetic() => 99,                  // Other alphabetic
-                _ => 255,                                      // Non-word
+                0x0400..=0x04FF | 0x0500..=0x052F => 2, // Cyrillic
+                0x0370..=0x03FF => 3,                   // Greek
+                0x0600..=0x06FF | 0x0750..=0x077F => 4, // Arabic
+                0x0590..=0x05FF => 5,                   // Hebrew
+                0x0900..=0x097F => 6,                   // Devanagari
+                0x4E00..=0x9FFF | 0x3400..=0x4DBF => 7, // CJK Ideographs
+                0x3040..=0x309F => 8,                   // Hiragana
+                0x30A0..=0x30FF => 9,                   // Katakana
+                0xAC00..=0xD7AF => 10,                  // Hangul
+                0x0E00..=0x0E7F => 11,                  // Thai
+                0x00C0..=0x024F | 0x1E00..=0x1EFF => 1, // Latin extended
+                _ if c.is_alphabetic() => 99,           // Other alphabetic
+                _ => 255,                               // Non-word
             }
         }
     }

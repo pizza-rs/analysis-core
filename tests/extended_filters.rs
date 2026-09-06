@@ -7,7 +7,8 @@ extern crate alloc;
 
 use alloc::borrow::Cow;
 use pizza_analysis_core::*;
-use pizza_engine::analysis::{Token, TokenFilter};
+use pizza_engine::analysis::Token;
+use pizza_engine::analysis::TokenFilter;
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -2121,8 +2122,8 @@ mod stemmer_override {
 
     #[test]
     fn test_case_insensitive() {
-        let f = StemmerOverrideTokenFilter::from_rules(&[("running", "run")])
-            .with_ignore_case(true);
+        let f =
+            StemmerOverrideTokenFilter::from_rules(&[("running", "run")]).with_ignore_case(true);
         check_filter(&f, "Running", "run");
     }
 
@@ -2144,10 +2145,7 @@ mod conditional_filter {
     fn test_applies_when_predicate_matches() {
         let predicate = MinLengthPredicate(4);
         let inner = LowercaseTokenFilter::new();
-        let f = ConditionalTokenFilter::new(
-            Box::new(predicate),
-            Box::new(inner),
-        );
+        let f = ConditionalTokenFilter::new(Box::new(predicate), Box::new(inner));
         check_filter(&f, "HELLO", "hello");
     }
 
@@ -2155,10 +2153,7 @@ mod conditional_filter {
     fn test_skips_when_predicate_fails() {
         let predicate = MinLengthPredicate(10);
         let inner = LowercaseTokenFilter::new();
-        let f = ConditionalTokenFilter::new(
-            Box::new(predicate),
-            Box::new(inner),
-        );
+        let f = ConditionalTokenFilter::new(Box::new(predicate), Box::new(inner));
         // "hi" is too short for predicate, so no lowercasing
         check_filter(&f, "HI", "HI");
     }
@@ -2167,10 +2162,7 @@ mod conditional_filter {
     fn test_max_length_predicate() {
         let predicate = MaxLengthPredicate(3);
         let inner = pizza_engine::analysis::UppercaseTokenFilter::new();
-        let f = ConditionalTokenFilter::new(
-            Box::new(predicate),
-            Box::new(inner),
-        );
+        let f = ConditionalTokenFilter::new(Box::new(predicate), Box::new(inner));
         check_filter(&f, "hi", "HI"); // matches: len 2 <= 3
         check_filter(&f, "hello", "hello"); // doesn't match: len 5 > 3
     }
@@ -2179,10 +2171,7 @@ mod conditional_filter {
     fn test_pattern_predicate() {
         let predicate = PatternPredicate::new(r"^\d+$").unwrap();
         let inner = PatternReplaceTokenFilter::new(r"\d", "X").unwrap();
-        let f = ConditionalTokenFilter::new(
-            Box::new(predicate),
-            Box::new(inner),
-        );
+        let f = ConditionalTokenFilter::new(Box::new(predicate), Box::new(inner));
         check_filter(&f, "123", "XXX"); // numeric, matches
         check_filter(&f, "abc", "abc"); // alpha, doesn't match
     }

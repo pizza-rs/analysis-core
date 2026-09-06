@@ -246,8 +246,7 @@ mod tests {
     #[test]
     fn test_nested_object() {
         let tok = JsonFieldTokenizer::new();
-        let tokens =
-            tok.tokenize(r#"{"user":{"name":"alice","roles":["admin"]},"active":"yes"}"#);
+        let tokens = tok.tokenize(r#"{"user":{"name":"alice","roles":["admin"]},"active":"yes"}"#);
         let terms: Vec<&str> = tokens.iter().map(|t| t.term.as_ref()).collect();
         assert!(terms.contains(&"alice"));
         assert!(terms.contains(&"admin"));

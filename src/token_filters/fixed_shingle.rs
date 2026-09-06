@@ -40,7 +40,11 @@ impl TokenFilter for FixedShingleTokenFilter {
 }
 
 /// Helper: builds shingles from a slice of tokens.
-pub fn build_fixed_shingles<'a>(tokens: &[Token<'a>], size: usize, separator: char) -> Vec<Token<'a>> {
+pub fn build_fixed_shingles<'a>(
+    tokens: &[Token<'a>],
+    size: usize,
+    separator: char,
+) -> Vec<Token<'a>> {
     if tokens.len() < size {
         return Vec::new();
     }

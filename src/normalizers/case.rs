@@ -59,7 +59,8 @@ mod tests {
     // pizza_engine in `super::super::mod`; bring them in explicitly so the
     // test module compiles standalone (the parent module's `pub use`
     // does not flow into a child module's namespace).
-    use pizza_engine::analysis::{LowercaseNormalizer, UppercaseNormalizer};
+    use pizza_engine::analysis::LowercaseNormalizer;
+    use pizza_engine::analysis::UppercaseNormalizer;
 
     #[test]
     fn test_lowercase() {

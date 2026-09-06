@@ -281,8 +281,14 @@ mod tests {
         let extra = extra.unwrap();
         assert_eq!(extra.len(), 1);
         assert_eq!(extra[0].term.as_ref(), "the quick");
-        assert_eq!(extra[0].start_offset, 0, "start should be first token's start");
+        assert_eq!(
+            extra[0].start_offset, 0,
+            "start should be first token's start"
+        );
         assert_eq!(extra[0].end_offset, 9, "end should be last token's end");
-        assert_eq!(extra[0].position, 0, "position should be first token's position");
+        assert_eq!(
+            extra[0].position, 0,
+            "position should be first token's position"
+        );
     }
 }

@@ -43,7 +43,29 @@ impl EmailTokenizer {
     }
 
     fn is_email_local_char(c: char) -> bool {
-        c.is_alphanumeric() || matches!(c, '.' | '+' | '-' | '_' | '!' | '#' | '$' | '%' | '&' | '\'' | '*' | '/' | '=' | '?' | '^' | '`' | '{' | '|' | '}' | '~')
+        c.is_alphanumeric()
+            || matches!(
+                c,
+                '.' | '+'
+                    | '-'
+                    | '_'
+                    | '!'
+                    | '#'
+                    | '$'
+                    | '%'
+                    | '&'
+                    | '\''
+                    | '*'
+                    | '/'
+                    | '='
+                    | '?'
+                    | '^'
+                    | '`'
+                    | '{'
+                    | '|'
+                    | '}'
+                    | '~'
+            )
     }
 
     fn is_email_domain_char(c: char) -> bool {
@@ -128,7 +150,8 @@ impl Tokenizer for EmailTokenizer {
                         if self.split_local {
                             for part in local.split(|c| c == '.' || c == '+') {
                                 if !part.is_empty() {
-                                    let part_offset = part.as_ptr() as usize - text.as_ptr() as usize;
+                                    let part_offset =
+                                        part.as_ptr() as usize - text.as_ptr() as usize;
                                     tokens.push(Token {
                                         term: Cow::Borrowed(part),
                                         start_offset: part_offset as u32,
@@ -151,7 +174,8 @@ impl Tokenizer for EmailTokenizer {
                         if self.split_domain {
                             for part in domain.split('.') {
                                 if !part.is_empty() {
-                                    let part_offset = part.as_ptr() as usize - text.as_ptr() as usize;
+                                    let part_offset =
+                                        part.as_ptr() as usize - text.as_ptr() as usize;
                                     tokens.push(Token {
                                         term: Cow::Borrowed(part),
                                         start_offset: part_offset as u32,

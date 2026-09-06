@@ -21,7 +21,11 @@ impl EmailExtractTokenFilter {
         }
     }
 }
-impl Default for EmailExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for EmailExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for EmailExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -30,12 +34,15 @@ impl TokenFilter for EmailExtractTokenFilter {
         if matches.is_empty() {
             return (false, None);
         }
-        let extras: Vec<Token<'a>> = matches.iter().map(|email| Token {
-            term: Cow::Owned(String::from(*email)),
-            start_offset: token.start_offset,
-            end_offset: token.end_offset,
-            position: token.position,
-        }).collect();
+        let extras: Vec<Token<'a>> = matches
+            .iter()
+            .map(|email| Token {
+                term: Cow::Owned(String::from(*email)),
+                start_offset: token.start_offset,
+                end_offset: token.end_offset,
+                position: token.position,
+            })
+            .collect();
         (false, Some(extras))
     }
 }
@@ -52,7 +59,11 @@ impl UrlExtractTokenFilter {
         }
     }
 }
-impl Default for UrlExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for UrlExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for UrlExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -61,12 +72,15 @@ impl TokenFilter for UrlExtractTokenFilter {
         if matches.is_empty() {
             return (false, None);
         }
-        let extras: Vec<Token<'a>> = matches.iter().map(|url| Token {
-            term: Cow::Owned(String::from(*url)),
-            start_offset: token.start_offset,
-            end_offset: token.end_offset,
-            position: token.position,
-        }).collect();
+        let extras: Vec<Token<'a>> = matches
+            .iter()
+            .map(|url| Token {
+                term: Cow::Owned(String::from(*url)),
+                start_offset: token.start_offset,
+                end_offset: token.end_offset,
+                position: token.position,
+            })
+            .collect();
         (false, Some(extras))
     }
 }
@@ -83,30 +97,43 @@ impl IpExtractTokenFilter {
         }
     }
 }
-impl Default for IpExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for IpExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for IpExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let matches: Vec<&str> = self.ipv4_pattern.find_iter(text).map(|m| m.as_str()).collect();
+        let matches: Vec<&str> = self
+            .ipv4_pattern
+            .find_iter(text)
+            .map(|m| m.as_str())
+            .collect();
         if matches.is_empty() {
             return (false, None);
         }
-        let extras: Vec<Token<'a>> = matches.iter().filter_map(|ip| {
-            // Validate octets
-            let parts: Vec<&str> = ip.split('.').collect();
-            if parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok()) {
-                Some(Token {
-                    term: Cow::Owned(String::from(*ip)),
-                    start_offset: token.start_offset,
-                    end_offset: token.end_offset,
-                    position: token.position,
-                })
-            } else {
-                None
-            }
-        }).collect();
-        if extras.is_empty() { return (false, None); }
+        let extras: Vec<Token<'a>> = matches
+            .iter()
+            .filter_map(|ip| {
+                // Validate octets
+                let parts: Vec<&str> = ip.split('.').collect();
+                if parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok()) {
+                    Some(Token {
+                        term: Cow::Owned(String::from(*ip)),
+                        start_offset: token.start_offset,
+                        end_offset: token.end_offset,
+                        position: token.position,
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+        if extras.is_empty() {
+            return (false, None);
+        }
         (false, Some(extras))
     }
 }
@@ -117,9 +144,15 @@ pub struct HashtagExtractTokenFilter {
     pub keep_hash: bool,
 }
 impl HashtagExtractTokenFilter {
-    pub fn new() -> Self { Self { keep_hash: false } }
+    pub fn new() -> Self {
+        Self { keep_hash: false }
+    }
 }
-impl Default for HashtagExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for HashtagExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for HashtagExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -138,9 +171,15 @@ pub struct MentionExtractTokenFilter {
     pub keep_at: bool,
 }
 impl MentionExtractTokenFilter {
-    pub fn new() -> Self { Self { keep_at: false } }
+    pub fn new() -> Self {
+        Self { keep_at: false }
+    }
 }
-impl Default for MentionExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for MentionExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for MentionExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -165,7 +204,11 @@ impl PhoneExtractTokenFilter {
         }
     }
 }
-impl Default for PhoneExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for PhoneExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for PhoneExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -174,12 +217,15 @@ impl TokenFilter for PhoneExtractTokenFilter {
         if matches.is_empty() {
             return (false, None);
         }
-        let extras: Vec<Token<'a>> = matches.iter().map(|ph| Token {
-            term: Cow::Owned(String::from(*ph)),
-            start_offset: token.start_offset,
-            end_offset: token.end_offset,
-            position: token.position,
-        }).collect();
+        let extras: Vec<Token<'a>> = matches
+            .iter()
+            .map(|ph| Token {
+                term: Cow::Owned(String::from(*ph)),
+                start_offset: token.start_offset,
+                end_offset: token.end_offset,
+                position: token.position,
+            })
+            .collect();
         (false, Some(extras))
     }
 }
@@ -196,15 +242,25 @@ impl CurrencyExtractTokenFilter {
         }
     }
 }
-impl Default for CurrencyExtractTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for CurrencyExtractTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for CurrencyExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         if self.pattern.is_match(text) {
             // Normalize: extract symbol and amount
-            let normalized: String = text.chars().filter(|c| c.is_ascii_digit() || *c == '.').collect();
-            let symbol: String = text.chars().filter(|c| matches!(*c, '$'|'€'|'£'|'¥'|'₹'|'₽'|'₿')).collect();
+            let normalized: String = text
+                .chars()
+                .filter(|c| c.is_ascii_digit() || *c == '.')
+                .collect();
+            let symbol: String = text
+                .chars()
+                .filter(|c| matches!(*c, '$' | '€' | '£' | '¥' | '₹' | '₽' | '₿'))
+                .collect();
             let synonym = Token {
                 term: Cow::Owned(format!("_currency:{}:{}", symbol, normalized)),
                 start_offset: token.start_offset,
@@ -220,8 +276,16 @@ impl TokenFilter for CurrencyExtractTokenFilter {
 /// Extracts numbers and emits both original and numeric-normalized form.
 #[derive(Clone, Debug)]
 pub struct NumberExtractTokenFilter;
-impl NumberExtractTokenFilter { pub fn new() -> Self { Self } }
-impl Default for NumberExtractTokenFilter { fn default() -> Self { Self } }
+impl NumberExtractTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for NumberExtractTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for NumberExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -252,7 +316,10 @@ pub struct LookupTokenFilter {
 impl LookupTokenFilter {
     pub fn new(entries: &[(&str, &str)]) -> Self {
         Self {
-            entries: entries.iter().map(|(k, v)| (String::from(*k), String::from(*v))).collect(),
+            entries: entries
+                .iter()
+                .map(|(k, v)| (String::from(*k), String::from(*v)))
+                .collect(),
         }
     }
 
@@ -262,7 +329,11 @@ impl LookupTokenFilter {
 }
 
 impl Default for LookupTokenFilter {
-    fn default() -> Self { Self { entries: Vec::new() } }
+    fn default() -> Self {
+        Self {
+            entries: Vec::new(),
+        }
+    }
 }
 
 impl TokenFilter for LookupTokenFilter {
@@ -281,8 +352,16 @@ impl TokenFilter for LookupTokenFilter {
 /// Emits the domain part of an email as a synonym.
 #[derive(Clone, Debug)]
 pub struct EmailDomainTokenFilter;
-impl EmailDomainTokenFilter { pub fn new() -> Self { Self } }
-impl Default for EmailDomainTokenFilter { fn default() -> Self { Self } }
+impl EmailDomainTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for EmailDomainTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for EmailDomainTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {

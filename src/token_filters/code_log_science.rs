@@ -15,9 +15,17 @@ pub struct IdentifierSplitTokenFilter {
     pub keep_original: bool,
 }
 impl IdentifierSplitTokenFilter {
-    pub fn new() -> Self { Self { keep_original: true } }
+    pub fn new() -> Self {
+        Self {
+            keep_original: true,
+        }
+    }
 }
-impl Default for IdentifierSplitTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for IdentifierSplitTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for IdentifierSplitTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -26,12 +34,15 @@ impl TokenFilter for IdentifierSplitTokenFilter {
         if parts.len() <= 1 {
             return (false, None);
         }
-        let extras: Vec<Token<'a>> = parts.iter().map(|p| Token {
-            term: Cow::Owned(p.to_lowercase()),
-            start_offset: token.start_offset,
-            end_offset: token.end_offset,
-            position: token.position,
-        }).collect();
+        let extras: Vec<Token<'a>> = parts
+            .iter()
+            .map(|p| Token {
+                term: Cow::Owned(p.to_lowercase()),
+                start_offset: token.start_offset,
+                end_offset: token.end_offset,
+                position: token.position,
+            })
+            .collect();
         if self.keep_original {
             (false, Some(extras))
         } else {
@@ -54,16 +65,55 @@ impl ProgrammingKeywordTokenFilter {
     pub fn new() -> Self {
         Self {
             keywords: vec![
-                "if", "else", "for", "while", "return", "function", "class", "import",
-                "export", "const", "let", "var", "fn", "pub", "struct", "enum", "impl",
-                "trait", "use", "mod", "match", "async", "await", "try", "catch",
-                "throw", "new", "delete", "typeof", "instanceof", "interface", "type",
-                "void", "null", "undefined", "true", "false", "self", "super", "this",
+                "if",
+                "else",
+                "for",
+                "while",
+                "return",
+                "function",
+                "class",
+                "import",
+                "export",
+                "const",
+                "let",
+                "var",
+                "fn",
+                "pub",
+                "struct",
+                "enum",
+                "impl",
+                "trait",
+                "use",
+                "mod",
+                "match",
+                "async",
+                "await",
+                "try",
+                "catch",
+                "throw",
+                "new",
+                "delete",
+                "typeof",
+                "instanceof",
+                "interface",
+                "type",
+                "void",
+                "null",
+                "undefined",
+                "true",
+                "false",
+                "self",
+                "super",
+                "this",
             ],
         }
     }
 }
-impl Default for ProgrammingKeywordTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for ProgrammingKeywordTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for ProgrammingKeywordTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -84,8 +134,16 @@ impl TokenFilter for ProgrammingKeywordTokenFilter {
 /// Detects log levels: "ERROR", "WARN", "INFO", "DEBUG", "TRACE"
 #[derive(Clone, Debug)]
 pub struct LogLevelTokenFilter;
-impl LogLevelTokenFilter { pub fn new() -> Self { Self } }
-impl Default for LogLevelTokenFilter { fn default() -> Self { Self } }
+impl LogLevelTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for LogLevelTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for LogLevelTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -118,9 +176,15 @@ pub struct KeyValuePairTokenFilter {
     pub separator: char,
 }
 impl KeyValuePairTokenFilter {
-    pub fn new() -> Self { Self { separator: '=' } }
+    pub fn new() -> Self {
+        Self { separator: '=' }
+    }
 }
-impl Default for KeyValuePairTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for KeyValuePairTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for KeyValuePairTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -156,15 +220,29 @@ impl TokenFilter for KeyValuePairTokenFilter {
 /// Normalizes semantic version numbers: "v1.2.3" → "1.2.3", emits major/minor/patch.
 #[derive(Clone, Debug)]
 pub struct SemverTokenFilter;
-impl SemverTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SemverTokenFilter { fn default() -> Self { Self } }
+impl SemverTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SemverTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SemverTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         let ver = text.strip_prefix('v').unwrap_or(text);
         let parts: Vec<&str> = ver.split('.').collect();
-        if parts.len() >= 2 && parts.len() <= 4 && parts.iter().all(|p| p.chars().all(|c| c.is_ascii_digit() || c == '-' || c.is_alphanumeric())) {
+        if parts.len() >= 2
+            && parts.len() <= 4
+            && parts.iter().all(|p| {
+                p.chars()
+                    .all(|c| c.is_ascii_digit() || c == '-' || c.is_alphanumeric())
+            })
+        {
             let mut extras = Vec::new();
             if let Some(major) = parts.first() {
                 extras.push(Token {
@@ -195,8 +273,16 @@ impl TokenFilter for SemverTokenFilter {
 /// Normalizes HTTP status codes to categories.
 #[derive(Clone, Debug)]
 pub struct HttpStatusTokenFilter;
-impl HttpStatusTokenFilter { pub fn new() -> Self { Self } }
-impl Default for HttpStatusTokenFilter { fn default() -> Self { Self } }
+impl HttpStatusTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for HttpStatusTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for HttpStatusTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -234,7 +320,11 @@ impl ErrorCodeTokenFilter {
         }
     }
 }
-impl Default for ErrorCodeTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for ErrorCodeTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for ErrorCodeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -264,7 +354,11 @@ impl AnsiStripTokenFilter {
         }
     }
 }
-impl Default for AnsiStripTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for AnsiStripTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for AnsiStripTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -280,13 +374,24 @@ impl TokenFilter for AnsiStripTokenFilter {
 /// ISBN normalization: strips hyphens and validates.
 #[derive(Clone, Debug)]
 pub struct IsbnNormTokenFilter;
-impl IsbnNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for IsbnNormTokenFilter { fn default() -> Self { Self } }
+impl IsbnNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for IsbnNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for IsbnNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let digits: String = text.chars().filter(|c| c.is_ascii_digit() || *c == 'X' || *c == 'x').collect();
+        let digits: String = text
+            .chars()
+            .filter(|c| c.is_ascii_digit() || *c == 'X' || *c == 'x')
+            .collect();
         if digits.len() == 10 || digits.len() == 13 {
             token.term = Cow::Owned(digits);
             let tag = Token {
@@ -304,8 +409,16 @@ impl TokenFilter for IsbnNormTokenFilter {
 /// DOI normalization: ensures consistent format.
 #[derive(Clone, Debug)]
 pub struct DoiNormTokenFilter;
-impl DoiNormTokenFilter { pub fn new() -> Self { Self } }
-impl Default for DoiNormTokenFilter { fn default() -> Self { Self } }
+impl DoiNormTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for DoiNormTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for DoiNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -322,7 +435,10 @@ impl TokenFilter for DoiNormTokenFilter {
             return (false, Some(alloc::vec![tag]));
         }
         // Strip doi: prefix or https://doi.org/ prefix
-        if let Some(stripped) = text.strip_prefix("doi:").or_else(|| text.strip_prefix("https://doi.org/")) {
+        if let Some(stripped) = text
+            .strip_prefix("doi:")
+            .or_else(|| text.strip_prefix("https://doi.org/"))
+        {
             token.term = Cow::Owned(stripped.to_lowercase());
             let tag = Token {
                 term: Cow::Owned(String::from("_type:doi")),
@@ -339,8 +455,16 @@ impl TokenFilter for DoiNormTokenFilter {
 /// Detects and tags file extensions: "report.pdf" → emits "_ext:pdf"
 #[derive(Clone, Debug)]
 pub struct FileExtensionTokenFilter;
-impl FileExtensionTokenFilter { pub fn new() -> Self { Self } }
-impl Default for FileExtensionTokenFilter { fn default() -> Self { Self } }
+impl FileExtensionTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for FileExtensionTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for FileExtensionTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -364,21 +488,35 @@ impl TokenFilter for FileExtensionTokenFilter {
 /// Extracts file path components as separate tokens.
 #[derive(Clone, Debug)]
 pub struct PathComponentTokenFilter;
-impl PathComponentTokenFilter { pub fn new() -> Self { Self } }
-impl Default for PathComponentTokenFilter { fn default() -> Self { Self } }
+impl PathComponentTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for PathComponentTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for PathComponentTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         if text.contains('/') || text.contains('\\') {
-            let parts: Vec<&str> = text.split(&['/', '\\'][..]).filter(|s| !s.is_empty()).collect();
+            let parts: Vec<&str> = text
+                .split(&['/', '\\'][..])
+                .filter(|s| !s.is_empty())
+                .collect();
             if parts.len() > 1 {
-                let extras: Vec<Token<'a>> = parts.iter().map(|p| Token {
-                    term: Cow::Owned(String::from(*p)),
-                    start_offset: token.start_offset,
-                    end_offset: token.end_offset,
-                    position: token.position,
-                }).collect();
+                let extras: Vec<Token<'a>> = parts
+                    .iter()
+                    .map(|p| Token {
+                        term: Cow::Owned(String::from(*p)),
+                        start_offset: token.start_offset,
+                        end_offset: token.end_offset,
+                        position: token.position,
+                    })
+                    .collect();
                 return (false, Some(extras));
             }
         }
@@ -398,7 +536,10 @@ fn split_identifier(s: &str) -> Vec<String> {
                 parts.push(current.clone());
                 current.clear();
             }
-        } else if c.is_uppercase() && !current.is_empty() && current.chars().last().map_or(false, |l| l.is_lowercase()) {
+        } else if c.is_uppercase()
+            && !current.is_empty()
+            && current.chars().last().map_or(false, |l| l.is_lowercase())
+        {
             parts.push(current.clone());
             current.clear();
             current.push(c);

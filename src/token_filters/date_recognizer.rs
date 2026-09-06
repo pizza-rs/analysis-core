@@ -13,7 +13,9 @@ pub struct DateRecognizerTokenFilter {
 
 impl DateRecognizerTokenFilter {
     pub fn new() -> Self {
-        Self { emit_normalized: true }
+        Self {
+            emit_normalized: true,
+        }
     }
 }
 

@@ -1,11 +1,11 @@
 use alloc::borrow::Cow;
 use alloc::string::String;
-use alloc::vec::Vec;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 use hashbrown::HashSet;
-use std::sync::Mutex;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
+use std::sync::Mutex;
 
 /// Outputs a single "fingerprint" token from the entire token stream.
 ///

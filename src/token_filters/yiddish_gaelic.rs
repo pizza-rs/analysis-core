@@ -14,10 +14,14 @@ use pizza_engine::analysis::TokenFilter;
 #[derive(Clone, Debug)]
 pub struct YiddishNormalizationTokenFilter;
 impl YiddishNormalizationTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for YiddishNormalizationTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for YiddishNormalizationTokenFilter {
@@ -68,10 +72,14 @@ impl TokenFilter for YiddishNormalizationTokenFilter {
 #[derive(Clone, Debug)]
 pub struct YiddishStemTokenFilter;
 impl YiddishStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for YiddishStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for YiddishStemTokenFilter {
@@ -81,7 +89,11 @@ impl TokenFilter for YiddishStemTokenFilter {
         let lower = text.to_lowercase();
 
         // Check if it's Latin-script Yiddish (transliterated)
-        if lower.chars().all(|c| c.is_ascii_alphabetic() || c == '-' || c == '\'') && lower.len() > 4 {
+        if lower
+            .chars()
+            .all(|c| c.is_ascii_alphabetic() || c == '-' || c == '\'')
+            && lower.len() > 4
+        {
             let stemmed = stem_yiddish_latin(&lower);
             if stemmed != lower {
                 token.term = Cow::Owned(stemmed);
@@ -97,11 +109,10 @@ fn stem_yiddish_latin(word: &str) -> String {
 
     // Yiddish plural suffixes (Germanic origin)
     let suffixes = &[
-        "lekh",  // diminutive plural
-        "ung",   // nominalization (-ung)
-        "keit",  // -keit/-heit
-        "heyt",
-        "shaft", // -schaft
+        "lekh", // diminutive plural
+        "ung",  // nominalization (-ung)
+        "keit", // -keit/-heit
+        "heyt", "shaft", // -schaft
         "ish",   // adjective
         "ikh",   // -lich/-ig
         "er",    // comparative / agent
@@ -131,10 +142,14 @@ fn stem_yiddish_latin(word: &str) -> String {
 #[derive(Clone, Debug)]
 pub struct ScottishGaelicLenitionTokenFilter;
 impl ScottishGaelicLenitionTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for ScottishGaelicLenitionTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for ScottishGaelicLenitionTokenFilter {
@@ -153,7 +168,9 @@ impl TokenFilter for ScottishGaelicLenitionTokenFilter {
             if matches!(initial, 'b' | 'c' | 'd' | 'f' | 'g' | 'm' | 'p' | 's' | 't') {
                 // Special case: 'sh' and 'th' effectively silence the consonant
                 // For search purposes, remove the 'h' to get the root
-                let delenited: String = core::iter::once(initial).chain(chars[2..].iter().copied()).collect();
+                let delenited: String = core::iter::once(initial)
+                    .chain(chars[2..].iter().copied())
+                    .collect();
                 token.term = Cow::Owned(delenited);
                 return (false, None);
             }
@@ -167,10 +184,14 @@ impl TokenFilter for ScottishGaelicLenitionTokenFilter {
 #[derive(Clone, Debug)]
 pub struct ScottishGaelicStopTokenFilter;
 impl ScottishGaelicStopTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for ScottishGaelicStopTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for ScottishGaelicStopTokenFilter {
@@ -185,15 +206,75 @@ impl TokenFilter for ScottishGaelicStopTokenFilter {
 }
 
 fn is_gaelic_stop_word(word: &str) -> bool {
-    matches!(word,
-        "an" | "am" | "a" | "na" | "nan" | "nam" | "ag" | "air" | "aig" |
-        "ann" | "anns" | "às" | "bho" | "bhon" | "de" | "den" | "do" |
-        "don" | "e" | "eadar" | "fo" | "gu" | "gun" | "gus" | "le" |
-        "leis" | "mar" | "mu" | "mun" | "o" | "on" | "ri" | "ris" |
-        "ro" | "tro" | "troimh" | "tha" | "is" | "bi" | "bha" |
-        "chan" | "cha" | "nach" | "ach" | "agus" | "no" | "neo" |
-        "ma" | "mur" | "ged" | "nuair" | "far" | "oir" | "gur" |
-        "seo" | "sin" | "siud" | "mo" | "do" | "a" | "ar" | "ur" |
-        "mi" | "thu" | "e" | "i" | "sinn" | "sibh" | "iad"
+    matches!(
+        word,
+        "an" | "am"
+            | "a"
+            | "na"
+            | "nan"
+            | "nam"
+            | "ag"
+            | "air"
+            | "aig"
+            | "ann"
+            | "anns"
+            | "às"
+            | "bho"
+            | "bhon"
+            | "de"
+            | "den"
+            | "do"
+            | "don"
+            | "e"
+            | "eadar"
+            | "fo"
+            | "gu"
+            | "gun"
+            | "gus"
+            | "le"
+            | "leis"
+            | "mar"
+            | "mu"
+            | "mun"
+            | "o"
+            | "on"
+            | "ri"
+            | "ris"
+            | "ro"
+            | "tro"
+            | "troimh"
+            | "tha"
+            | "is"
+            | "bi"
+            | "bha"
+            | "chan"
+            | "cha"
+            | "nach"
+            | "ach"
+            | "agus"
+            | "no"
+            | "neo"
+            | "ma"
+            | "mur"
+            | "ged"
+            | "nuair"
+            | "far"
+            | "oir"
+            | "gur"
+            | "seo"
+            | "sin"
+            | "siud"
+            | "mo"
+            | "do"
+            | "a"
+            | "ar"
+            | "ur"
+            | "mi"
+            | "thu"
+            | "e"
+            | "i"
+            | "sinn"
+            | "sibh"
+            | "iad"
     )
 }

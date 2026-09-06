@@ -11,8 +11,16 @@ use pizza_engine::analysis::TokenFilter;
 /// Converts to camelCase: "hello_world" → "helloWorld"
 #[derive(Clone, Debug)]
 pub struct CamelCaseTokenFilter;
-impl CamelCaseTokenFilter { pub fn new() -> Self { Self } }
-impl Default for CamelCaseTokenFilter { fn default() -> Self { Self } }
+impl CamelCaseTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for CamelCaseTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for CamelCaseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -24,7 +32,9 @@ impl TokenFilter for CamelCaseTokenFilter {
             if c == '_' || c == '-' || c == ' ' {
                 capitalize_next = true;
             } else if capitalize_next {
-                for uc in c.to_uppercase() { result.push(uc); }
+                for uc in c.to_uppercase() {
+                    result.push(uc);
+                }
                 capitalize_next = false;
             } else if first {
                 result.push(c.to_lowercase().next().unwrap_or(c));
@@ -43,8 +53,16 @@ impl TokenFilter for CamelCaseTokenFilter {
 /// Converts to snake_case: "helloWorld" → "hello_world"
 #[derive(Clone, Debug)]
 pub struct SnakeCaseTokenFilter;
-impl SnakeCaseTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SnakeCaseTokenFilter { fn default() -> Self { Self } }
+impl SnakeCaseTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SnakeCaseTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SnakeCaseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -72,8 +90,16 @@ impl TokenFilter for SnakeCaseTokenFilter {
 /// Converts to kebab-case: "helloWorld" → "hello-world"
 #[derive(Clone, Debug)]
 pub struct KebabCaseTokenFilter;
-impl KebabCaseTokenFilter { pub fn new() -> Self { Self } }
-impl Default for KebabCaseTokenFilter { fn default() -> Self { Self } }
+impl KebabCaseTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for KebabCaseTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for KebabCaseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -101,8 +127,16 @@ impl TokenFilter for KebabCaseTokenFilter {
 /// Converts to PascalCase: "hello_world" → "HelloWorld"
 #[derive(Clone, Debug)]
 pub struct PascalCaseTokenFilter;
-impl PascalCaseTokenFilter { pub fn new() -> Self { Self } }
-impl Default for PascalCaseTokenFilter { fn default() -> Self { Self } }
+impl PascalCaseTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for PascalCaseTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for PascalCaseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -113,7 +147,9 @@ impl TokenFilter for PascalCaseTokenFilter {
             if c == '_' || c == '-' || c == ' ' {
                 capitalize_next = true;
             } else if capitalize_next {
-                for uc in c.to_uppercase() { result.push(uc); }
+                for uc in c.to_uppercase() {
+                    result.push(uc);
+                }
                 capitalize_next = false;
             } else {
                 result.push(c);
@@ -129,8 +165,16 @@ impl TokenFilter for PascalCaseTokenFilter {
 /// Converts text to a URL-friendly slug: "Hello World!" → "hello-world"
 #[derive(Clone, Debug)]
 pub struct SlugifyTokenFilter;
-impl SlugifyTokenFilter { pub fn new() -> Self { Self } }
-impl Default for SlugifyTokenFilter { fn default() -> Self { Self } }
+impl SlugifyTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for SlugifyTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for SlugifyTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -159,9 +203,17 @@ pub struct CamelCaseSplitTokenFilter {
     pub keep_original: bool,
 }
 impl CamelCaseSplitTokenFilter {
-    pub fn new() -> Self { Self { keep_original: true } }
+    pub fn new() -> Self {
+        Self {
+            keep_original: true,
+        }
+    }
 }
-impl Default for CamelCaseSplitTokenFilter { fn default() -> Self { Self::new() } }
+impl Default for CamelCaseSplitTokenFilter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TokenFilter for CamelCaseSplitTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -170,12 +222,15 @@ impl TokenFilter for CamelCaseSplitTokenFilter {
         if parts.len() <= 1 {
             return (false, None);
         }
-        let extras: Vec<Token<'a>> = parts.iter().map(|part| Token {
-            term: Cow::Owned(part.to_lowercase()),
-            start_offset: token.start_offset,
-            end_offset: token.end_offset,
-            position: token.position,
-        }).collect();
+        let extras: Vec<Token<'a>> = parts
+            .iter()
+            .map(|part| Token {
+                term: Cow::Owned(part.to_lowercase()),
+                start_offset: token.start_offset,
+                end_offset: token.end_offset,
+                position: token.position,
+            })
+            .collect();
         if self.keep_original {
             (false, Some(extras))
         } else {
@@ -189,14 +244,23 @@ impl TokenFilter for CamelCaseSplitTokenFilter {
 /// "hello world" → "olleh dlrow"
 #[derive(Clone, Debug)]
 pub struct WordReverseTokenFilter;
-impl WordReverseTokenFilter { pub fn new() -> Self { Self } }
-impl Default for WordReverseTokenFilter { fn default() -> Self { Self } }
+impl WordReverseTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for WordReverseTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for WordReverseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
         if text.contains(' ') {
-            let reversed: String = text.split(' ')
+            let reversed: String = text
+                .split(' ')
                 .map(|w| w.chars().rev().collect::<String>())
                 .collect::<Vec<_>>()
                 .join(" ");
@@ -212,13 +276,23 @@ impl TokenFilter for WordReverseTokenFilter {
 /// Converts text to Pig Latin. "hello" → "ellohay", "string" → "ingstray"
 #[derive(Clone, Debug)]
 pub struct PigLatinTokenFilter;
-impl PigLatinTokenFilter { pub fn new() -> Self { Self } }
-impl Default for PigLatinTokenFilter { fn default() -> Self { Self } }
+impl PigLatinTokenFilter {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Default for PigLatinTokenFilter {
+    fn default() -> Self {
+        Self
+    }
+}
 
 impl TokenFilter for PigLatinTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if text.is_empty() { return (false, None); }
+        if text.is_empty() {
+            return (false, None);
+        }
         let lower = text.to_lowercase();
         let chars: Vec<char> = lower.chars().collect();
         let result = if is_vowel_char(chars[0]) {
@@ -238,14 +312,21 @@ pub struct RepeatCharTokenFilter {
     pub times: usize,
 }
 impl RepeatCharTokenFilter {
-    pub fn new(times: usize) -> Self { Self { times } }
+    pub fn new(times: usize) -> Self {
+        Self { times }
+    }
 }
-impl Default for RepeatCharTokenFilter { fn default() -> Self { Self::new(2) } }
+impl Default for RepeatCharTokenFilter {
+    fn default() -> Self {
+        Self::new(2)
+    }
+}
 
 impl TokenFilter for RepeatCharTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let repeated: String = text.chars()
+        let repeated: String = text
+            .chars()
             .flat_map(|c| core::iter::repeat(c).take(self.times))
             .collect();
         token.term = Cow::Owned(repeated);
@@ -259,9 +340,15 @@ pub struct CollapseRepeatsTokenFilter {
     pub max_repeats: usize,
 }
 impl CollapseRepeatsTokenFilter {
-    pub fn new(max: usize) -> Self { Self { max_repeats: max } }
+    pub fn new(max: usize) -> Self {
+        Self { max_repeats: max }
+    }
 }
-impl Default for CollapseRepeatsTokenFilter { fn default() -> Self { Self::new(1) } }
+impl Default for CollapseRepeatsTokenFilter {
+    fn default() -> Self {
+        Self::new(1)
+    }
+}
 
 impl TokenFilter for CollapseRepeatsTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -297,10 +384,18 @@ pub struct PadTokenFilter {
 }
 impl PadTokenFilter {
     pub fn new(min_length: usize, pad_char: char, pad_left: bool) -> Self {
-        Self { min_length, pad_char, pad_left }
+        Self {
+            min_length,
+            pad_char,
+            pad_left,
+        }
     }
 }
-impl Default for PadTokenFilter { fn default() -> Self { Self::new(8, '0', true) } }
+impl Default for PadTokenFilter {
+    fn default() -> Self {
+        Self::new(8, '0', true)
+    }
+}
 
 impl TokenFilter for PadTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -309,7 +404,9 @@ impl TokenFilter for PadTokenFilter {
         if char_count >= self.min_length {
             return (false, None);
         }
-        let padding: String = core::iter::repeat(self.pad_char).take(self.min_length - char_count).collect();
+        let padding: String = core::iter::repeat(self.pad_char)
+            .take(self.min_length - char_count)
+            .collect();
         let padded = if self.pad_left {
             format!("{}{}", padding, text)
         } else {
@@ -329,10 +426,18 @@ pub struct PartialMaskTokenFilter {
 }
 impl PartialMaskTokenFilter {
     pub fn new(visible_start: usize, visible_end: usize) -> Self {
-        Self { visible_start, visible_end, mask_char: '*' }
+        Self {
+            visible_start,
+            visible_end,
+            mask_char: '*',
+        }
     }
 }
-impl Default for PartialMaskTokenFilter { fn default() -> Self { Self::new(2, 2) } }
+impl Default for PartialMaskTokenFilter {
+    fn default() -> Self {
+        Self::new(2, 2)
+    }
+}
 
 impl TokenFilter for PartialMaskTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
@@ -344,7 +449,9 @@ impl TokenFilter for PartialMaskTokenFilter {
         }
         let start: String = chars[..self.visible_start].iter().collect();
         let end: String = chars[len - self.visible_end..].iter().collect();
-        let middle: String = core::iter::repeat(self.mask_char).take(len - self.visible_start - self.visible_end).collect();
+        let middle: String = core::iter::repeat(self.mask_char)
+            .take(len - self.visible_start - self.visible_end)
+            .collect();
         token.term = Cow::Owned(format!("{}{}{}", start, middle, end));
         (false, None)
     }

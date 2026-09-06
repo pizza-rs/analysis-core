@@ -13,25 +13,32 @@ use pizza_engine::analysis::TokenFilter;
 #[derive(Clone, Debug)]
 pub struct HebrewNiqqudRemoveTokenFilter;
 impl HebrewNiqqudRemoveTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for HebrewNiqqudRemoveTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for HebrewNiqqudRemoveTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let cleaned: String = text.chars().filter(|c| {
-            let cp = *c as u32;
-            // Remove niqqud (U+0591–U+05BD, U+05BF, U+05C1–U+05C2, U+05C4–U+05C5, U+05C7)
-            // These are cantillation marks and vowel points
-            !((0x0591..=0x05BD).contains(&cp)
-                || cp == 0x05BF
-                || (0x05C1..=0x05C2).contains(&cp)
-                || (0x05C4..=0x05C5).contains(&cp)
-                || cp == 0x05C7)
-        }).collect();
+        let cleaned: String = text
+            .chars()
+            .filter(|c| {
+                let cp = *c as u32;
+                // Remove niqqud (U+0591–U+05BD, U+05BF, U+05C1–U+05C2, U+05C4–U+05C5, U+05C7)
+                // These are cantillation marks and vowel points
+                !((0x0591..=0x05BD).contains(&cp)
+                    || cp == 0x05BF
+                    || (0x05C1..=0x05C2).contains(&cp)
+                    || (0x05C4..=0x05C5).contains(&cp)
+                    || cp == 0x05C7)
+            })
+            .collect();
         if cleaned.len() != text.len() {
             token.term = Cow::Owned(cleaned);
         }
@@ -45,10 +52,14 @@ impl TokenFilter for HebrewNiqqudRemoveTokenFilter {
 #[derive(Clone, Debug)]
 pub struct HebrewStemTokenFilter;
 impl HebrewStemTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for HebrewStemTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for HebrewStemTokenFilter {
@@ -57,7 +68,11 @@ impl TokenFilter for HebrewStemTokenFilter {
         let chars: Vec<char> = text.chars().collect();
 
         // Only process Hebrew text (U+0590–U+05FF)
-        if chars.is_empty() || !chars.iter().any(|c| (*c as u32) >= 0x05D0 && (*c as u32) <= 0x05EA) {
+        if chars.is_empty()
+            || !chars
+                .iter()
+                .any(|c| (*c as u32) >= 0x05D0 && (*c as u32) <= 0x05EA)
+        {
             return (false, None);
         }
 
@@ -68,9 +83,7 @@ impl TokenFilter for HebrewStemTokenFilter {
         // ב (be, in), כ (ke, like), ל (le, to), מ (mi, from), ש (she, that)
         if end - start > 3 {
             let first = chars[start];
-            if matches!(first,
-                'ה' | 'ו' | 'ב' | 'כ' | 'ל' | 'מ' | 'ש'
-            ) {
+            if matches!(first, 'ה' | 'ו' | 'ב' | 'כ' | 'ל' | 'מ' | 'ש') {
                 start += 1;
             }
         }
@@ -119,23 +132,30 @@ impl TokenFilter for HebrewStemTokenFilter {
 #[derive(Clone, Debug)]
 pub struct HebrewFinalFormNormTokenFilter;
 impl HebrewFinalFormNormTokenFilter {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 impl Default for HebrewFinalFormNormTokenFilter {
-    fn default() -> Self { Self }
+    fn default() -> Self {
+        Self
+    }
 }
 
 impl TokenFilter for HebrewFinalFormNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        let normalized: String = text.chars().map(|c| match c {
-            'ך' => 'כ', // Final Kaf → Kaf
-            'ם' => 'מ', // Final Mem → Mem
-            'ן' => 'נ', // Final Nun → Nun
-            'ף' => 'פ', // Final Pe → Pe
-            'ץ' => 'צ', // Final Tsadi → Tsadi
-            _ => c,
-        }).collect();
+        let normalized: String = text
+            .chars()
+            .map(|c| match c {
+                'ך' => 'כ', // Final Kaf → Kaf
+                'ם' => 'מ', // Final Mem → Mem
+                'ן' => 'נ', // Final Nun → Nun
+                'ף' => 'פ', // Final Pe → Pe
+                'ץ' => 'צ', // Final Tsadi → Tsadi
+                _ => c,
+            })
+            .collect();
         if normalized != text {
             token.term = Cow::Owned(normalized);
         }

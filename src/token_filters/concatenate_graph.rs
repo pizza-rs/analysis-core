@@ -1,10 +1,10 @@
 use alloc::borrow::Cow;
 use alloc::string::String;
-use alloc::vec::Vec;
 use alloc::sync::Arc;
-use std::sync::Mutex;
+use alloc::vec::Vec;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
+use std::sync::Mutex;
 
 /// Concatenates tokens in the stream, emitting a running concatenation.
 ///
