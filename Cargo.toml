@@ -16,7 +16,7 @@ std = ["pizza-engine/std"]
 [dependencies]
 pizza-engine = { path = "../../lib/engine", default-features = false }
 hashbrown = { version = "0.14", default-features = false }
-regex = { version = "1", default-features = false, features = ["std", "unicode-perl"] }
+regex = { version = "1", default-features = false, features = ["std", "unicode-perl", "unicode-case"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

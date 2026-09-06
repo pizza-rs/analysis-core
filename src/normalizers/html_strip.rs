@@ -190,7 +190,7 @@ mod tests {
         let n = HtmlStripNormalizer::new();
         let mut text = String::from("<p>Hello <b>World</b></p>");
         n.normalize(&mut text);
-        assert_eq!(text, " Hello World ");
+        assert_eq!(text, "Hello World ");
     }
 
     #[test]

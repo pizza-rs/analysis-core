@@ -122,6 +122,9 @@ pub use token_filters::UppercaseTokenFilter;
 
 // ─── Token Filters: N-gram & Shingle ──────────────────────────────────────
 pub use token_filters::CommonGramsTokenFilter;
+pub use token_filters::CommonGramsQueryFilter;
+pub use token_filters::FixBrokenOffsetsFilter;
+pub use token_filters::RussianYoNormalizationTokenFilter;
 pub use token_filters::EdgeNgramTokenFilter;
 pub use token_filters::NgramTokenFilter;
 pub use token_filters::ShingleTokenFilter;

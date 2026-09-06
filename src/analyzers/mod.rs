@@ -54,6 +54,10 @@ fn register_tokenizers(factory: &mut AnalysisFactory) {
     factory.register_tokenizer("ngram", Box::new(NgramTokenizer::new(1, 2)));
     factory.register_tokenizer("edge_ngram", Box::new(EdgeNgramTokenizer::new(1, 2)));
     factory.register_tokenizer("whitespace", Box::new(WhitespaceTokenizer::new()));
+    factory.register_tokenizer(
+        "char_group",
+        Box::new(CharGroupTokenizer::new(vec![' ', '\t', '\n'])),
+    );
     factory.register_tokenizer("standard", Box::new(StandardTokenizer::new()));
     factory.register_tokenizer("pattern", Box::new(PatternTokenizer::default()));
     factory.register_tokenizer(
@@ -103,6 +107,11 @@ fn register_normalizers(factory: &mut AnalysisFactory) {
     );
     factory.register_normalizer("lowercase", Box::new(LowercaseNormalizer::new()));
     factory.register_normalizer("uppercase", Box::new(UppercaseNormalizer::new()));
+    factory.register_normalizer("mapping", Box::new(MappingNormalizer::new()));
+    factory.register_normalizer(
+        "pattern_replace",
+        Box::new(PatternReplaceNormalizer::new(r"[^\w\s]", "")),
+    );
     factory.register_normalizer(
         "unicode_nfkc",
         Box::new(UnicodeNormalizer::new(UnicodeNormForm::Nfkc)),

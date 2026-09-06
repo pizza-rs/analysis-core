@@ -46,6 +46,8 @@ impl Tokenizer for SentenceTokenizer {
                 // Check if next is whitespace, EOF, or another sentence-end
                 let at_boundary = match chars.peek() {
                     None => true,
+                    // CJK terminal punctuation needs no following space
+                    Some(&(_, next_c)) if c == '。' || c == '！' || c == '？' => true,
                     Some(&(_, next_c)) => next_c.is_whitespace() || next_c == '"' || next_c == '\'',
                 };
 

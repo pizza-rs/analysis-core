@@ -945,31 +945,31 @@ mod stemmer_filter {
 
     #[test]
     fn test_english_running() {
-        let f = StemmerTokenFilter::new(StemmerLanguage::English);
+        let f = StemmerTokenFilter::from_language(StemmerLanguage::English);
         check_filter(&f, "running", "run");
     }
 
     #[test]
     fn test_english_cats() {
-        let f = StemmerTokenFilter::new(StemmerLanguage::English);
+        let f = StemmerTokenFilter::from_language(StemmerLanguage::English);
         check_filter(&f, "cats", "cat");
     }
 
     #[test]
     fn test_english_short_word() {
-        let f = StemmerTokenFilter::new(StemmerLanguage::English);
+        let f = StemmerTokenFilter::from_language(StemmerLanguage::English);
         check_filter(&f, "an", "an");
     }
 
     #[test]
     fn test_english_empty() {
-        let f = StemmerTokenFilter::new(StemmerLanguage::English);
+        let f = StemmerTokenFilter::from_language(StemmerLanguage::English);
         check_filter(&f, "", "");
     }
 
     #[test]
     fn test_arabic_stemmer() {
-        let f = StemmerTokenFilter::new(StemmerLanguage::Arabic);
+        let f = StemmerTokenFilter::from_language(StemmerLanguage::Arabic);
         let mut t = Token::new("test", 0, 4, 0);
         let (deleted, _) = f.filter(&mut t);
         assert!(!deleted);
@@ -2457,7 +2457,7 @@ mod cross_cutting {
         let _ = ConcatenateGraphTokenFilter::new(' ');
         let _ = RemoveDuplicatesTokenFilter::new();
         let _ = ProtectedWordsTokenFilter::new(&["a"]);
-        let _ = StemmerTokenFilter::new(StemmerLanguage::English);
+        let _ = StemmerTokenFilter::from_language(StemmerLanguage::English);
         let _ = KStemTokenFilter::new();
         let _ = EnglishMinimalStemTokenFilter::new();
         let _ = HyphenatedWordsTokenFilter::new();
@@ -2544,7 +2544,7 @@ mod cross_cutting {
     #[test]
     fn test_pipeline_keyword_repeat_stemmer() {
         let repeat = KeywordRepeatTokenFilter::new();
-        let stemmer = StemmerTokenFilter::new(StemmerLanguage::English);
+        let stemmer = StemmerTokenFilter::from_language(StemmerLanguage::English);
 
         let mut token = Token::new("running", 0, 7, 0);
         let (_, extras) = repeat.filter(&mut token);

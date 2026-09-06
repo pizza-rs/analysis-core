@@ -26,17 +26,15 @@ impl TokenFilter for ClassicTokenFilter {
         let text = token.term.as_ref();
 
         // Rule 1: Remove possessive endings ('s, 'S)
-        if text.ends_with("'s")
-            || text.ends_with("'S")
-            || text.ends_with("\u{2019}s")
-            || text.ends_with("\u{2019}S")
-        {
-            let new_text = &text[..text.len() - 2];
-            if new_text.is_empty() {
-                return (true, None);
+        for suffix in ["'s", "'S", "\u{2019}s", "\u{2019}S"] {
+            if text.ends_with(suffix) {
+                let new_text = &text[..text.len() - suffix.len()];
+                if new_text.is_empty() {
+                    return (true, None);
+                }
+                token.term = Cow::Owned(String::from(new_text));
+                return (false, None);
             }
-            token.term = Cow::Owned(String::from(new_text));
-            return (false, None);
         }
 
         // Rule 2: Remove dots from acronyms (text with multiple dots)

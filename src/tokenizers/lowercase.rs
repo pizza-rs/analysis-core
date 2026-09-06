@@ -68,8 +68,9 @@ mod tests {
     fn test_lowercase_tokenizer() {
         let t = LowercaseTokenizer::new();
         let tokens = t.tokenize("Hello, WORLD! Test123");
-        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens.len(), 3);
         assert_eq!(tokens[0].term.as_ref(), "hello");
         assert_eq!(tokens[1].term.as_ref(), "world");
+        assert_eq!(tokens[2].term.as_ref(), "test");
     }
 }
