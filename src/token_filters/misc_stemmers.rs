@@ -249,63 +249,9 @@ fn stem_norwegian_light(word: &str) -> String {
     result
 }
 
-/// Dutch stemmer (Kraaij-Pohlmann algorithm).
-///
-/// Removes common Dutch suffixes.
-#[derive(Clone, Debug, Default)]
-pub struct DutchStemTokenFilter;
-
-impl DutchStemTokenFilter {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl TokenFilter for DutchStemTokenFilter {
-    fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
-        let text = token.term.as_ref();
-        if text.len() < 4 {
-            return (false, None);
-        }
-
-        let stemmed = stem_dutch(text);
-        if stemmed != text {
-            token.term = Cow::Owned(stemmed);
-        }
-        (false, None)
-    }
-}
-
-fn stem_dutch(word: &str) -> String {
-    let mut result = String::from(word);
-
-    // Remove common Dutch suffixes
-    if result.ends_with("heid") && result.len() > 7 {
-        result.truncate(result.len() - 4);
-        return result;
-    }
-
-    if result.ends_with("ing") && result.len() > 6 {
-        result.truncate(result.len() - 3);
-        return result;
-    }
-
-    if result.ends_with("en") && result.len() > 4 {
-        result.truncate(result.len() - 2);
-        return result;
-    }
-
-    if result.ends_with('e') && result.len() > 3 {
-        result.pop();
-        return result;
-    }
-
-    if result.ends_with('s') && result.len() > 3 {
-        result.pop();
-    }
-
-    result
-}
+/// Dutch stemming lives in `dutch_stem.rs` (full Snowball port); re-exported
+/// here for the analyzer registry.
+pub use super::dutch_stem::DutchStemTokenFilter;
 
 #[cfg(test)]
 mod tests {
@@ -335,13 +281,5 @@ mod tests {
         let mut token = make_token("bøkene");
         filter.filter(&mut token);
         assert_eq!(token.term.as_ref(), "bøk");
-    }
-
-    #[test]
-    fn test_dutch_stem() {
-        let filter = DutchStemTokenFilter::new();
-        let mut token = make_token("huizen");
-        filter.filter(&mut token);
-        assert_eq!(token.term.as_ref(), "huiz");
     }
 }

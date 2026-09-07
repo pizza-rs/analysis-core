@@ -1711,7 +1711,6 @@ mod dutch_stem {
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_basic() {
         check("lichamen", "lichaam");
         check("lichamelijk", "lichamelijk");
@@ -1720,7 +1719,6 @@ mod dutch_stem {
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_licht_variants() {
         check("lichte", "licht");
         check("lichten", "licht");
@@ -1733,14 +1731,12 @@ mod dutch_stem {
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_compound() {
         check("lichtkranten", "lichtkrant");
         check("lidstaten", "lidstaat");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_op_prefix() {
         check("opgraven", "opgraaf");
         check("opgroeiende", "opgroeiend");
@@ -1754,6 +1750,95 @@ mod dutch_stem {
     #[test]
     fn test_empty_term() {
         check("", "");
+    }
+
+    // Full vector set from Lucene's TestDutchAnalyzer (77 terms), including
+    // compound/ge- words that exercise the prefix/infix removal paths.
+    #[test]
+    fn test_dutch_full_lucene_vectors() {
+        let vectors: &[(&str, &str)] = &[
+            ("lichaamsziek", "lichaamsziek"),
+            ("lichamelijk", "lichamelijk"),
+            ("lichamelijke", "lichamelijk"),
+            ("lichamelijkheden", "lichamelijk"),
+            ("lichamen", "lichaam"),
+            ("lichere", "licher"),
+            ("licht", "licht"),
+            ("lichtbeeld", "lichtbeeld"),
+            ("lichtbruin", "lichtbruin"),
+            ("lichtdoorlatende", "lichtdoorlaat"),
+            ("lichte", "licht"),
+            ("lichten", "licht"),
+            ("lichtende", "licht"),
+            ("lichtenvoorde", "lichtenvoor"),
+            ("lichter", "lichter"),
+            ("lichtere", "lichter"),
+            ("lichters", "lichter"),
+            ("lichtgevoeligheid", "lichtvoel"),
+            ("lichtgewicht", "lichtwicht"),
+            ("lichtgrijs", "lichtgrijs"),
+            ("lichthoeveelheid", "lichthoeveel"),
+            ("lichtintensiteit", "lichtintens"),
+            ("lichtje", "licht"),
+            ("lichtjes", "licht"),
+            ("lichtkranten", "lichtkrant"),
+            ("lichtkring", "lichtkr"),
+            ("lichtkringen", "lichtkr"),
+            ("lichtregelsystemen", "lichtrelsysteem"),
+            ("lichtste", "licht"),
+            ("lichtstromende", "lichtstroom"),
+            ("lichtte", "licht"),
+            ("lichtten", "licht"),
+            ("lichttoetreding", "lichttoetreed"),
+            ("lichtverontreinigde", "lichtverontrein"),
+            ("lichtzinnige", "lichtzin"),
+            ("lid", "lid"),
+            ("lidia", "lidia"),
+            ("lidmaatschap", "lidmaatschap"),
+            ("lidstaten", "lidstaat"),
+            ("lidvereniging", "lidvereen"),
+            ("opgingen", "opg"),
+            ("opglanzing", "opglans"),
+            ("opglanzingen", "opglans"),
+            ("opglimlachten", "opglimlacht"),
+            ("opglimpen", "opglimp"),
+            ("opglimpende", "opglimp"),
+            ("opglimping", "opglimp"),
+            ("opglimpingen", "opglimp"),
+            ("opgraven", "opgraaf"),
+            ("opgrijnzen", "opgrijns"),
+            ("opgrijzende", "opgrijs"),
+            ("opgroeien", "opgroei"),
+            ("opgroeiende", "opgroeiend"),
+            ("opgroeiplaats", "opgroeiplaats"),
+            ("ophaal", "ophaal"),
+            ("ophaaldienst", "ophaaldienst"),
+            ("ophaalkosten", "ophaalkost"),
+            ("ophaalsystemen", "ophaalsysteem"),
+            ("ophaalt", "ophaalt"),
+            ("ophaaltruck", "ophaaltruck"),
+            ("ophalen", "ophaal"),
+            ("ophalend", "ophaal"),
+            ("ophalers", "ophaler"),
+            ("ophef", "ophef"),
+            ("opheldering", "opheldeer"),
+            ("ophemelde", "ophemel"),
+            ("ophemelen", "ophemeel"),
+            ("opheusden", "opheus"),
+            ("ophief", "ophief"),
+            ("ophield", "ophield"),
+            ("ophieven", "ophief"),
+            ("ophoepelt", "ophoepelt"),
+            ("ophoog", "ophoog"),
+            ("ophoogzand", "ophoogzand"),
+            ("ophopen", "ophoop"),
+            ("ophoping", "ophoop"),
+            ("ophouden", "ophoud"),
+        ];
+        let f = DutchStemTokenFilter::new();
+        for (input, expected) in vectors {
+            check_filter(&f, input, expected);
+        }
     }
 }
 
@@ -1769,47 +1854,71 @@ mod brazilian_stem {
         check_filter(&f, input, expected);
     }
 
+    // Vectors below are from Lucene's TestBrazilianAnalyzer
+    // (testWithSnowballExamples / testNormalization). The old approximation
+    // produced different stems for several of these (e.g. borracheiro →
+    // "borrachei" instead of "borracheir"); expectations follow Lucene.
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_basic_arias() {
         check("boataria", "boat");
         check("boatarias", "boat");
+        check("boate", "boat");
+        check("boates", "boat");
+        check("boatos", "boat");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_oes_plural() {
         check("bobalhões", "bobalho");
-        check("bobalhona", "bobalho");
-        check("bobalhone", "bobalho");
+        check("bobalhona", "bobalhon");
+        check("bobalhone", "bobalhon");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_eiro_suffix() {
-        check("borracheiro", "borrachei");
-        check("borracheira", "borrachei");
+        check("borracheiro", "borracheir");
+        check("borracheira", "borracheir");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_ismo_suffix() {
-        check("comunismo", "comunis");
-        check("comunista", "comunis");
+        check("comunismo", "comun");
+        check("comunista", "comun");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_eza_suffix() {
-        check("beleza", "bel");
-        check("belezas", "bel");
+        check("beleza", "belez");
+        check("belezas", "belez");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_metric() {
         check("quilômetros", "quilometr");
         check("quilômetro", "quilometr");
+        check("quilométricas", "quilometr");
+        check("quilométricos", "quilometr");
+    }
+
+    #[test]
+    fn test_diacritic_normalization() {
+        // removes diacritics: different from snowball portuguese
+        check("bôas", "boas");
+        check("boçal", "bocal");
+        check("boêmio", "boemi");
+        check("bóia", "boi");
+        check("quinhão", "quinha");
+        check("quintão", "quinta");
+        // encia → ente (versus snowball portuguese 'quintessent')
+        check("quintessência", "quintessente");
+        // lowercase by default / remove diacritics
+        check("Brasil", "brasil");
+        check("Brasília", "brasil");
+        // non-letter content: diacritic still removed, no stemming
+        check("quimio5terápicos", "quimio5terapicos");
+        // too short: diacritics are not removed
+        check("áá", "áá");
+        check("ááá", "aaa");
     }
 
     #[test]
