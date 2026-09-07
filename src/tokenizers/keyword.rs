@@ -20,9 +20,8 @@ impl Default for KeywordTokenizer {
 
 impl Tokenizer for KeywordTokenizer {
     fn tokenize<'a>(&self, text: &'a str) -> Vec<Token<'a>> {
-        if text.is_empty() {
-            return Vec::new();
-        }
+        // Lucene's KeywordTokenizer always emits exactly one token — even
+        // for empty input (a zero-length term).
         vec![Token::new(text, 0, text.len() as u32, 0)]
     }
 }
@@ -45,6 +44,8 @@ mod tests {
     fn test_keyword_tokenizer_empty() {
         let t = KeywordTokenizer::new();
         let tokens = t.tokenize("");
-        assert_eq!(tokens.len(), 0);
+        // Lucene always emits exactly one token (zero-length term here)
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].term.as_ref(), "");
     }
 }

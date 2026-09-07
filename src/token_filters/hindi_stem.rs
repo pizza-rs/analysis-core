@@ -41,68 +41,104 @@ impl TokenFilter for HindiStemTokenFilter {
 
 fn stem_hindi(chars: &[char], len: usize) -> Option<usize> {
     // 5-char suffixes
-    if len > 6 {
-        let suffix: String = chars[len - 5..].iter().collect();
-        match suffix.as_str() {
-            "ियाँ" | "## ियों" => return Some(len - 5),
-            _ => {}
-        }
+    if len > 6
+        && (ends_with_hi(chars, len, "ाइयाँ")
+            || ends_with_hi(chars, len, "ाइयां")
+            || ends_with_hi(chars, len, "ाइयों")
+            || ends_with_hi(chars, len, "ाऊंगा")
+            || ends_with_hi(chars, len, "ाऊंगी")
+            || ends_with_hi(chars, len, "ाएंगी")
+            || ends_with_hi(chars, len, "ाएंगे"))
+    {
+        return Some(len - 5);
     }
-
     // 4-char suffixes
-    if len > 5 {
-        let suffix: String = chars[len - 4..].iter().collect();
-        match suffix.as_str() {
-            "िया\u{0901}" | " ## ियो" => return Some(len - 4),
-            _ => {}
-        }
+    if len > 5
+        && (ends_with_hi(chars, len, "एंगी")
+            || ends_with_hi(chars, len, "एंगे")
+            || ends_with_hi(chars, len, "ताएं")
+            || ends_with_hi(chars, len, "ताओं")
+            || ends_with_hi(chars, len, "नाएं")
+            || ends_with_hi(chars, len, "नाओं")
+            || ends_with_hi(chars, len, "ाएगा")
+            || ends_with_hi(chars, len, "ाएगी")
+            || ends_with_hi(chars, len, "ाओगी")
+            || ends_with_hi(chars, len, "ाओगे")
+            || ends_with_hi(chars, len, "ातीं")
+            || ends_with_hi(chars, len, "ियाँ")
+            || ends_with_hi(chars, len, "ियां")
+            || ends_with_hi(chars, len, "ियों")
+            || ends_with_hi(chars, len, "ूंगा")
+            || ends_with_hi(chars, len, "ूंगी")
+            || ends_with_hi(chars, len, "ेंगी")
+            || ends_with_hi(chars, len, "ेंगे"))
+    {
+        return Some(len - 4);
     }
-
     // 3-char suffixes
-    if len > 4 {
-        let suffix: String = chars[len - 3..].iter().collect();
-        match suffix.as_str() {
-            "ियाँ" | "ाओं" | "ुओं" | "ियों" | "ियाँ" | "ाएँ" | "ाएं" | "ों" => {
-                return Some(len - 3)
-            }
-            _ => {}
-        }
+    if len > 4
+        && (ends_with_hi(chars, len, "तीं")
+            || ends_with_hi(chars, len, "ाइए")
+            || ends_with_hi(chars, len, "ाईं")
+            || ends_with_hi(chars, len, "ाएं")
+            || ends_with_hi(chars, len, "ाओं")
+            || ends_with_hi(chars, len, "ाकर")
+            || ends_with_hi(chars, len, "ाता")
+            || ends_with_hi(chars, len, "ाती")
+            || ends_with_hi(chars, len, "ाते")
+            || ends_with_hi(chars, len, "ाना")
+            || ends_with_hi(chars, len, "ाने")
+            || ends_with_hi(chars, len, "ाया")
+            || ends_with_hi(chars, len, "ुआं")
+            || ends_with_hi(chars, len, "ुएं")
+            || ends_with_hi(chars, len, "ुओं")
+            || ends_with_hi(chars, len, "ेगा")
+            || ends_with_hi(chars, len, "ेगी")
+            || ends_with_hi(chars, len, "ोगी")
+            || ends_with_hi(chars, len, "ोगे"))
+    {
+        return Some(len - 3);
     }
-
     // 2-char suffixes
-    if len > 3 {
-        let suffix: String = chars[len - 2..].iter().collect();
-        match suffix.as_str() {
-            "ों" | "ें" | "ों" | "ो\u{0902}" | "े\u{0902}" | "ा\u{0902}" | "ी\u{0902}" | "िं" | "ाँ"
-            | "ि\u{0902}" | "ा\u{0901}" | "ी\u{0901}" | "ों" | "ें" => {
-                return Some(len - 2)
-            }
-            _ => {}
-        }
+    if len > 3
+        && (ends_with_hi(chars, len, "कर")
+            || ends_with_hi(chars, len, "ता")
+            || ends_with_hi(chars, len, "ती")
+            || ends_with_hi(chars, len, "ते")
+            || ends_with_hi(chars, len, "ना")
+            || ends_with_hi(chars, len, "नी")
+            || ends_with_hi(chars, len, "ने")
+            || ends_with_hi(chars, len, "ाँ")
+            || ends_with_hi(chars, len, "ां")
+            || ends_with_hi(chars, len, "ाई")
+            || ends_with_hi(chars, len, "ाए")
+            || ends_with_hi(chars, len, "ाओ")
+            || ends_with_hi(chars, len, "िए")
+            || ends_with_hi(chars, len, "ीं")
+            || ends_with_hi(chars, len, "ें")
+            || ends_with_hi(chars, len, "ों"))
+    {
+        return Some(len - 2);
     }
-
-    // 1-char suffixes (matras/vowel signs)
-    if len > 2 {
-        let last = chars[len - 1];
-        match last {
-            '\u{093E}' | // ा
-            '\u{093F}' | // ि
-            '\u{0940}' | // ी
-            '\u{0941}' | // ु
-            '\u{0942}' | // ू
-            '\u{0947}' | // े
-            '\u{0948}' | // ै
-            '\u{094B}' | // ो
-            '\u{094C}' | // ौ
-            '\u{094D}'   // ्  (halant/virama)
-            => return Some(len - 1),
-            _ => {}
-        }
+    // 1-char suffixes
+    if len > 2
+        && (ends_with_hi(chars, len, "ा")
+            || ends_with_hi(chars, len, "ि")
+            || ends_with_hi(chars, len, "ी")
+            || ends_with_hi(chars, len, "ु")
+            || ends_with_hi(chars, len, "ू")
+            || ends_with_hi(chars, len, "े")
+            || ends_with_hi(chars, len, "ो"))
+    {
+        return Some(len - 1);
     }
-
     None
 }
 
+fn ends_with_hi(s: &[char], len: usize, suffix: &str) -> bool {
+    let suffix: Vec<char> = suffix.chars().collect();
+    len >= suffix.len() && &s[len - suffix.len()..len] == suffix.as_slice()
+}
 #[cfg(test)]
 mod tests {
     use super::*;

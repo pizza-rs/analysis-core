@@ -38,96 +38,68 @@ impl TokenFilter for ArabicStemTokenFilter {
     }
 }
 
+/// Lucene ArabicStemmer — faithful port of
+/// `org.apache.lucene.analysis.ar.ArabicStemmer`: strip one prefix, then
+/// suffixes (each suffix requires ≥2 chars to remain), iterating the
+/// suffix table so multiple suffixes can come off.
 fn stem_arabic(chars: &[char]) -> String {
-    let mut result: Vec<char> = chars.to_vec();
+    // ( Alef, Lam ), ( Waw, Alef, Lam ), ( Beh, Alef, Lam ),
+    // ( Kaf, Alef, Lam ), ( Feh, Alef, Lam ), ( Lam, Lam ), ( Waw )
+    const PREFIXES: &[&[char]] = &[
+        &['\u{0627}', '\u{0644}'],
+        &['\u{0648}', '\u{0627}', '\u{0644}'],
+        &['\u{0628}', '\u{0627}', '\u{0644}'],
+        &['\u{0643}', '\u{0627}', '\u{0644}'],
+        &['\u{0641}', '\u{0627}', '\u{0644}'],
+        &['\u{0644}', '\u{0644}'],
+        &['\u{0648}'],
+    ];
+    // ( Heh, Alef ), ( Alef, Noon ), ( Alef, Teh Marbuta ), ( Waw, Noon ),
+    // ( Yeh, Noon ), ( Yeh, Heh ), ( Yeh, Teh Marbuta ), ( Heh ),
+    // ( Teh Marbuta ), ( Yeh )
+    const SUFFIXES: &[&[char]] = &[
+        &['\u{0647}', '\u{0627}'],
+        &['\u{0627}', '\u{0646}'],
+        &['\u{0627}', '\u{062A}'],
+        &['\u{0648}', '\u{0646}'],
+        &['\u{064A}', '\u{0646}'],
+        &['\u{064A}', '\u{0647}'],
+        &['\u{064A}', '\u{0629}'],
+        &['\u{0647}'],
+        &['\u{0629}'],
+        &['\u{064A}'],
+    ];
 
-    // Remove definite article ال (alef-lam) at the beginning
-    if result.len() > 4 && result[0] == '\u{0627}' && result[1] == '\u{0644}' {
-        result = result[2..].to_vec();
-    }
-    // Remove وال (waw-alef-lam) at the beginning
-    else if result.len() > 5
-        && result[0] == '\u{0648}'
-        && result[1] == '\u{0627}'
-        && result[2] == '\u{0644}'
-    {
-        result = result[3..].to_vec();
-    }
-    // Remove بال (ba-alef-lam) at the beginning
-    else if result.len() > 5
-        && result[0] == '\u{0628}'
-        && result[1] == '\u{0627}'
-        && result[2] == '\u{0644}'
-    {
-        result = result[3..].to_vec();
-    }
-    // Remove كال (kaf-alef-lam) at the beginning
-    else if result.len() > 5
-        && result[0] == '\u{0643}'
-        && result[1] == '\u{0627}'
-        && result[2] == '\u{0644}'
-    {
-        result = result[3..].to_vec();
-    }
-    // Remove فال (fa-alef-lam)
-    else if result.len() > 5
-        && result[0] == '\u{0641}'
-        && result[1] == '\u{0627}'
-        && result[2] == '\u{0644}'
-    {
-        result = result[3..].to_vec();
-    }
-    // Remove لل (lam-lam) at the beginning
-    else if result.len() > 4 && result[0] == '\u{0644}' && result[1] == '\u{0644}' {
-        result = result[2..].to_vec();
-    }
-    // Remove single-char prefixes: و (waw), ب (ba), ك (kaf), ف (fa)
-    else if result.len() > 3 {
-        match result[0] {
-            '\u{0648}' | '\u{0628}' | '\u{0643}' | '\u{0641}' => {
-                result = result[1..].to_vec();
-            }
-            _ => {}
+    let mut s: Vec<char> = chars.to_vec();
+    let mut len = s.len();
+
+    // Prefixes: strip the first matching one. The single-char wa- prefix
+    // requires ≥3 remaining characters (Java: len < 4 fails); the others
+    // require ≥2.
+    for prefix in PREFIXES {
+        let passes = if prefix.len() == 1 {
+            len >= 4
+        } else {
+            len >= prefix.len() + 2
+        } && s[..prefix.len()] == prefix[..];
+        if passes {
+            s.drain(..prefix.len());
+            len -= prefix.len();
+            break;
         }
     }
 
-    // Remove suffixes
-    let len = result.len();
-    if len > 3 {
-        // 2-char suffixes
-        if len > 4 {
-            let s2: String = result[len - 2..].iter().collect();
-            match s2.as_str() {
-                "\u{0627}\u{062A}" | // ات (alef-ta)
-                "\u{0648}\u{0646}" | // ون (waw-nun)
-                "\u{064A}\u{0646}" | // ين (ya-nun)
-                "\u{064A}\u{0629}" | // ية (ya-ta_marbuta)
-                "\u{064A}\u{0627}" | // يا (ya-alef)
-                "\u{0648}\u{0627}"   // وا (waw-alef)
-                => {
-                    result.truncate(len - 2);
-                    return result.iter().collect();
-                }
-                _ => {}
-            }
-        }
-
-        // 1-char suffixes
-        let last = result[result.len() - 1];
-        match last {
-            '\u{0629}' | // ة (ta marbuta)
-            '\u{0647}' | // ه (ha)
-            '\u{064A}'   // ي (ya)
-            => {
-                result.truncate(result.len() - 1);
-            }
-            _ => {}
+    // suffixes: iterate the whole table (multiple can strip); each requires
+    // ≥2 chars remaining after the cut.
+    for suffix in SUFFIXES {
+        if len >= suffix.len() + 2 && &s[len - suffix.len()..len] == *suffix {
+            len -= suffix.len();
         }
     }
 
-    result.iter().collect()
+    s.truncate(len);
+    s.iter().collect()
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
