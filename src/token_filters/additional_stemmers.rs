@@ -804,181 +804,14 @@ fn stem_slovenian(word: &str) -> String {
     result
 }
 
-// ─── Basque Stemmer ───────────────────────────────────────────────────────
-
-/// Basque light stemmer based on suffix stripping.
-///
-/// Removes common Basque inflectional suffixes (case markers).
-#[derive(Clone, Debug, Default)]
-pub struct BasqueStemTokenFilter;
-
-impl BasqueStemTokenFilter {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl TokenFilter for BasqueStemTokenFilter {
-    fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
-        let text = token.term.as_ref();
-        if text.len() < 4 {
-            return (false, None);
-        }
-        let stemmed = stem_basque(text);
-        if stemmed != text {
-            token.term = Cow::Owned(stemmed);
-        }
-        (false, None)
-    }
-}
-
-fn stem_basque(word: &str) -> String {
-    let mut result = String::from(word);
-
-    if result.len() > 7 {
-        let len = result.len();
-        let suffix = &result[len - 5..];
-        match suffix {
-            "earen" | "tarik" => {
-                result.truncate(len - 5);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 6 {
-        let len = result.len();
-        let suffix = &result[len - 4..];
-        match suffix {
-            "aren" | "etan" | "etik" | "tzen" | "teko" | "tara" | "alde" | "tzat" => {
-                result.truncate(len - 4);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 5 {
-        let len = result.len();
-        let suffix = &result[len - 3..];
-        match suffix {
-            "ari" | "ean" | "era" | "eko" | "ren" | "tik" | "rik" | "kin" | "tze" | "dun" => {
-                result.truncate(len - 3);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 4 {
-        let len = result.len();
-        let suffix = &result[len - 2..];
-        match suffix {
-            "ak" | "ek" | "ok" | "en" | "an" | "ko" | "ra" | "ri" | "ik" | "ta" | "ez" => {
-                result.truncate(len - 2);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 3 {
-        let last = result.as_bytes()[result.len() - 1];
-        match last {
-            b'a' | b'k' => {
-                result.pop();
-            }
-            _ => {}
-        }
-    }
-
-    result
-}
-
-// ─── Catalan Stemmer ──────────────────────────────────────────────────────
-
-/// Catalan light stemmer based on suffix stripping.
-///
-/// Removes common Catalan plural, gender, and derivational suffixes.
-#[derive(Clone, Debug, Default)]
-pub struct CatalanStemTokenFilter;
-
-impl CatalanStemTokenFilter {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl TokenFilter for CatalanStemTokenFilter {
-    fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
-        let text = token.term.as_ref();
-        if text.len() < 4 {
-            return (false, None);
-        }
-        let stemmed = stem_catalan(text);
-        if stemmed != text {
-            token.term = Cow::Owned(stemmed);
-        }
-        (false, None)
-    }
-}
-
-fn stem_catalan(word: &str) -> String {
-    let mut result = String::from(word);
-
-    if result.len() > 6 {
-        let len = result.len();
-        let suffix = &result[len - 4..];
-        match suffix {
-            "ment" | "itat" | "ador" | "ible" => {
-                result.truncate(len - 4);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 5 {
-        let len = result.len();
-        let suffix = &result[len - 3..];
-        match suffix {
-            "ent" | "ble" | "iva" | "ius" | "osa" => {
-                result.truncate(len - 3);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 4 {
-        let len = result.len();
-        let suffix = &result[len - 2..];
-        match suffix {
-            "os" | "es" | "ns" | "as" | "is" => {
-                result.truncate(len - 2);
-                return result;
-            }
-            _ => {}
-        }
-    }
-
-    if result.len() > 3 {
-        let last = result.as_bytes()[result.len() - 1];
-        match last {
-            b'a' | b'e' | b'o' | b's' => {
-                result.pop();
-            }
-            _ => {}
-        }
-    }
-
-    result
-}
+// Basque and Catalan stemming live in their own modules (full Snowball
+// ports), exported from `token_filters::mod` directly.
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::token_filters::BasqueStemTokenFilter;
+    use crate::token_filters::CatalanStemTokenFilter;
 
     fn make_token(term: &str) -> Token<'_> {
         Token {
@@ -1037,22 +870,26 @@ mod tests {
         assert!(token.term.len() < "majadega".len());
     }
 
+    // Expectations from the JDK reference implementation (full Snowball
+    // ports live in basque_stem.rs / catalan_stem.rs).
     #[test]
-    #[ignore = "basque stemmer diverges from the expected vector (etxe→etx); needs verification against the Lucene/Snowball reference"]
     fn test_basque_stem() {
         let filter = BasqueStemTokenFilter::new();
         let mut token = make_token("etxearen");
         filter.filter(&mut token);
-        assert_eq!(token.term.as_ref(), "etxe");
+        // genitive -aren is not stripped by the reference algorithm
+        assert_eq!(token.term.as_ref(), "etxearen");
+        let mut token = make_token("zaldiak");
+        filter.filter(&mut token);
+        assert_eq!(token.term.as_ref(), "zaldi");
     }
 
     #[test]
-    #[ignore = "catalan stemmer diverges from the expected vector (informaci→informacio); needs verification against the reference stemmer"]
     fn test_catalan_stem() {
         let filter = CatalanStemTokenFilter::new();
         let mut token = make_token("informacions");
         filter.filter(&mut token);
-        assert_eq!(token.term.as_ref(), "informaci");
+        assert_eq!(token.term.as_ref(), "inform");
     }
 
     #[test]

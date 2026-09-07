@@ -175,10 +175,16 @@ fn stem_hungarian_light(word: &str) -> String {
 
 // ─── Indonesian Stemmer ───────────────────────────────────────────────────
 
-/// Indonesian stemmer based on Lucene's IndonesianStemFilter.
+/// Indonesian stemmer — faithful port of Lucene's `IndonesianStemmer`
+/// ("A Study of Stemming Effects on Information Retrieval in Bahasa
+/// Indonesia", Fadillah Z. Tala).
 ///
-/// Removes common Indonesian prefixes and suffixes following
-/// the Asian Federation for Natural Language Processing approach.
+/// Order of operations matters: inflectional suffixes (particles and
+/// possessive pronouns) first, then derivational morphology — first-order
+/// prefixes, then (only if a prefix fired) suffixes and second-order
+/// prefixes; on prefix failure, second-order prefixes followed by suffixes.
+/// Every rule is gated on the word having more than two syllables, tracked
+/// as it shrinks.
 #[derive(Clone, Debug, Default)]
 pub struct IndonesianStemTokenFilter;
 
@@ -188,14 +194,23 @@ impl IndonesianStemTokenFilter {
     }
 }
 
+const REMOVED_KE: u32 = 1;
+const REMOVED_PENG: u32 = 2;
+const REMOVED_DI: u32 = 4;
+const REMOVED_MENG: u32 = 8;
+const REMOVED_TER: u32 = 16;
+const REMOVED_BER: u32 = 32;
+const REMOVED_PE: u32 = 64;
+
+struct IndonesianStemmer {
+    num_syllables: usize,
+    flags: u32,
+}
+
 impl TokenFilter for IndonesianStemTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if text.len() < 4 {
-            return (false, None);
-        }
-
-        let stemmed = stem_indonesian(text);
+        let stemmed = stem_indonesian(&text.to_lowercase());
         if stemmed != text {
             token.term = Cow::Owned(stemmed);
         }
@@ -203,83 +218,229 @@ impl TokenFilter for IndonesianStemTokenFilter {
     }
 }
 
+fn is_vowel(ch: char) -> bool {
+    matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u')
+}
+
 fn stem_indonesian(word: &str) -> String {
-    let mut result = String::from(word);
-    let original_len = result.len();
+    let mut text: Vec<char> = word.chars().collect();
+    let mut st = IndonesianStemmer {
+        num_syllables: text.iter().filter(|c| is_vowel(**c)).count(),
+        flags: 0,
+    };
 
-    // Remove particle suffixes: -lah, -kah, -tah, -pun
-    if result.ends_with("lah") || result.ends_with("kah") || result.ends_with("tah") {
-        result.truncate(result.len() - 3);
-    } else if result.ends_with("pun") {
-        result.truncate(result.len() - 3);
+    let mut len = text.len();
+    if st.num_syllables > 2 {
+        len = remove_particle(&mut text, len, &mut st);
     }
-
-    // Remove possessive suffixes: -ku, -mu, -nya
-    if result.ends_with("nya") {
-        result.truncate(result.len() - 3);
-    } else if result.ends_with("ku") || result.ends_with("mu") {
-        result.truncate(result.len() - 2);
+    if st.num_syllables > 2 {
+        len = remove_possessive_pronoun(&mut text, len, &mut st);
     }
+    len = stem_derivational(&mut text, len, &mut st);
 
-    // Remove derivational suffix: -kan, -an, -i
-    let suffix_removed;
-    if result.len() > 4 && result.ends_with("kan") {
-        result.truncate(result.len() - 3);
-        suffix_removed = true;
-    } else if result.len() > 4 && result.ends_with("an") {
-        result.truncate(result.len() - 2);
-        suffix_removed = true;
-    } else if result.len() > 4 && result.ends_with('i') {
-        result.truncate(result.len() - 1);
-        suffix_removed = true;
+    text.truncate(len);
+    text.into_iter().collect()
+}
+
+fn stem_derivational(text: &mut [char], mut len: usize, st: &mut IndonesianStemmer) -> usize {
+    let old_len = len;
+    if st.num_syllables > 2 {
+        len = remove_first_order_prefix(text, len, st);
+    }
+    if old_len != len {
+        // a rule fired
+        let old_len = len;
+        if st.num_syllables > 2 {
+            len = remove_suffix(text, len, st);
+        }
+        if old_len != len && st.num_syllables > 2 {
+            len = remove_second_order_prefix(text, len, st);
+        }
     } else {
-        suffix_removed = false;
-    }
-
-    // Remove prefixes: me-, ber-, di-, ke-, se-, per-, ter-, pe-
-    if result.len() > 4 {
-        if result.starts_with("mem")
-            || result.starts_with("men")
-            || result.starts_with("meng")
-            || result.starts_with("meny")
-            || result.starts_with("menge")
-        {
-            if result.starts_with("menge") && result.len() > 7 {
-                result = result[5..].to_string();
-            } else if result.starts_with("meng") && result.len() > 6 {
-                result = result[4..].to_string();
-            } else if result.starts_with("meny") && result.len() > 6 {
-                result = result[4..].to_string();
-            } else if result.starts_with("men") && result.len() > 5 {
-                result = result[3..].to_string();
-            } else if result.starts_with("mem") && result.len() > 5 {
-                result = result[3..].to_string();
-            } else if result.starts_with("me") && result.len() > 4 {
-                result = result[2..].to_string();
-            }
-        } else if result.starts_with("ber") && result.len() > 5 {
-            result = result[3..].to_string();
-        } else if result.starts_with("di") && result.len() > 4 {
-            result = result[2..].to_string();
-        } else if result.starts_with("per") && result.len() > 5 {
-            result = result[3..].to_string();
-        } else if result.starts_with("ter") && result.len() > 5 {
-            result = result[3..].to_string();
-        } else if result.starts_with("ke") && result.len() > 4 {
-            result = result[2..].to_string();
-        } else if result.starts_with("se") && result.len() > 4 {
-            result = result[2..].to_string();
-        } else if result.starts_with("pe") && result.len() > 4 && !suffix_removed {
-            result = result[2..].to_string();
+        // fail
+        if st.num_syllables > 2 {
+            len = remove_second_order_prefix(text, len, st);
+        }
+        if st.num_syllables > 2 {
+            len = remove_suffix(text, len, st);
         }
     }
+    len
+}
 
-    // Only return stemmed result if we actually shortened it
-    if result.len() < original_len && result.len() >= 3 {
-        result
-    } else {
-        word.to_string()
+fn remove_particle(text: &[char], len: usize, st: &mut IndonesianStemmer) -> usize {
+    let s: String = text[..len].iter().collect();
+    if s.ends_with("kah") || s.ends_with("lah") || s.ends_with("pun") {
+        st.num_syllables -= 1;
+        return len - 3;
     }
+    len
+}
+
+fn remove_possessive_pronoun(text: &[char], len: usize, st: &mut IndonesianStemmer) -> usize {
+    let s: String = text[..len].iter().collect();
+    if s.ends_with("ku") || s.ends_with("mu") {
+        st.num_syllables -= 1;
+        return len - 2;
+    }
+    if s.ends_with("nya") {
+        st.num_syllables -= 1;
+        return len - 3;
+    }
+    len
+}
+
+fn remove_first_order_prefix(text: &mut [char], len: usize, st: &mut IndonesianStemmer) -> usize {
+    let starts = |p: &str| -> bool {
+        let pc: Vec<char> = p.chars().collect();
+        pc.len() <= len && text[..pc.len()] == pc[..]
+    };
+    if starts("meng") {
+        st.flags |= REMOVED_MENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 4);
+    }
+    if starts("meny") && len > 4 && is_vowel(text[4]) {
+        st.flags |= REMOVED_MENG;
+        text[3] = 's';
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("men") {
+        st.flags |= REMOVED_MENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("mem") {
+        st.flags |= REMOVED_MENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("me") {
+        st.flags |= REMOVED_MENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 2);
+    }
+    if starts("peng") {
+        st.flags |= REMOVED_PENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 4);
+    }
+    if starts("peny") && len > 4 && is_vowel(text[4]) {
+        st.flags |= REMOVED_PENG;
+        text[3] = 's';
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("peny") {
+        st.flags |= REMOVED_PENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 4);
+    }
+    if starts("pen") && len > 3 && is_vowel(text[3]) {
+        st.flags |= REMOVED_PENG;
+        text[2] = 't';
+        st.num_syllables -= 1;
+        return delete_n(text, len, 2);
+    }
+    if starts("pen") {
+        st.flags |= REMOVED_PENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("pem") {
+        st.flags |= REMOVED_PENG;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("di") {
+        st.flags |= REMOVED_DI;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 2);
+    }
+    if starts("ter") {
+        st.flags |= REMOVED_TER;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("ke") {
+        st.flags |= REMOVED_KE;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 2);
+    }
+    len
+}
+
+fn remove_second_order_prefix(text: &mut [char], len: usize, st: &mut IndonesianStemmer) -> usize {
+    let starts = |p: &str| -> bool {
+        let pc: Vec<char> = p.chars().collect();
+        pc.len() <= len && text[..pc.len()] == pc[..]
+    };
+    if starts("ber") {
+        st.flags |= REMOVED_BER;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if len == 7 && starts("belajar") {
+        st.flags |= REMOVED_BER;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("be") && len > 4 && !is_vowel(text[2]) && text[3] == 'e' && text[4] == 'r' {
+        st.flags |= REMOVED_BER;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 2);
+    }
+    if starts("per") {
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if len == 7 && starts("pelajar") {
+        st.num_syllables -= 1;
+        return delete_n(text, len, 3);
+    }
+    if starts("pe") {
+        st.flags |= REMOVED_PE;
+        st.num_syllables -= 1;
+        return delete_n(text, len, 2);
+    }
+    len
+}
+
+fn remove_suffix(text: &[char], len: usize, st: &mut IndonesianStemmer) -> usize {
+    let s: String = text[..len].iter().collect();
+    if s.ends_with("kan")
+        && (st.flags & REMOVED_KE) == 0
+        && (st.flags & REMOVED_PENG) == 0
+        && (st.flags & REMOVED_PE) == 0
+    {
+        st.num_syllables -= 1;
+        return len - 3;
+    }
+    if s.ends_with("an")
+        && (st.flags & REMOVED_DI) == 0
+        && (st.flags & REMOVED_MENG) == 0
+        && (st.flags & REMOVED_TER) == 0
+    {
+        st.num_syllables -= 1;
+        return len - 2;
+    }
+    if s.ends_with('i')
+        && !s.ends_with("si")
+        && (st.flags & REMOVED_BER) == 0
+        && (st.flags & REMOVED_KE) == 0
+        && (st.flags & REMOVED_PENG) == 0
+    {
+        st.num_syllables -= 1;
+        return len - 1;
+    }
+    len
+}
+
+/// Port of StemmerUtil.deleteN: delete `n` chars starting at `from`.
+fn delete_n(text: &mut [char], len: usize, n: usize) -> usize {
+    text.copy_within(n..len, 0);
+    len - n
 }
 
 #[cfg(test)]
@@ -331,23 +492,94 @@ mod tests {
     #[test]
     fn test_indonesian_suffix() {
         let filter = IndonesianStemTokenFilter::new();
+        // mem- prefix fires; afterwards only 2 syllables remain, so the
+        // -kan suffix rule is gated off (Lucene semantics).
         let mut token = make_token("memakan");
         filter.filter(&mut token);
-        // "memakan" -> strip prefix "mem" -> "akan" or strip suffix "kan" -> "mema" -> ...
-        // Actual result depends on order. Our impl: strip suffixes first -> "mema" -> strip "me" prefix -> "ma"
-        // But "ma" is < 3 chars, so we keep "mema" and try prefix: starts_with "mem" -> "a" which is too short
-        // So the function should try: suffix "kan" -> "mema", then prefix "mem" on "mema" -> "a" too short
-        // Falls back to just suffix: "mema"
-        assert!(token.term.as_ref().len() < "memakan".len());
+        assert_eq!(token.term.as_ref(), "akan");
+        // meng- + -kan: both fire while syllables allow
+        let mut token = make_token("mengambilkan");
+        filter.filter(&mut token);
+        assert_eq!(token.term.as_ref(), "ambil");
     }
 
     #[test]
-    #[ignore = "indonesian prefix rule diverges from expected vector (lari→lar); needs reference verification"]
     fn test_indonesian_prefix() {
         let filter = IndonesianStemTokenFilter::new();
         let mut token = make_token("berlari");
         filter.filter(&mut token);
-        // strip suffix: no match, strip prefix "ber" -> "lari"
         assert_eq!(token.term.as_ref(), "lari");
+    }
+
+    // Vectors from Lucene's TestIndonesianStemmer (full stemming).
+    #[test]
+    fn test_indonesian_lucene_examples() {
+        let filter = IndonesianStemTokenFilter::new();
+        for (input, expected) in [
+            ("bukukah", "buku"),
+            ("adalah", "ada"),
+            ("bukupun", "buku"),
+            ("bukuku", "buku"),
+            ("bukumu", "buku"),
+            ("bukunya", "buku"),
+            ("mengukur", "ukur"),
+            ("menyapu", "sapu"),
+            ("menduga", "duga"),
+            ("menuduh", "uduh"),
+            ("membaca", "baca"),
+            ("merusak", "rusak"),
+            ("pengukur", "ukur"),
+            ("penyapu", "sapu"),
+            ("penduga", "duga"),
+            ("pembaca", "baca"),
+            ("diukur", "ukur"),
+            ("tersapu", "sapu"),
+            ("kekasih", "kasih"),
+            ("berlari", "lari"),
+            ("belajar", "ajar"),
+            ("bekerja", "kerja"),
+            ("perjelas", "jelas"),
+            ("pelajar", "ajar"),
+            ("pekerja", "kerja"),
+            ("tarikkan", "tarik"),
+            ("ambilkan", "ambil"),
+            ("mengambilkan", "ambil"),
+            ("makanan", "makan"),
+            ("janjian", "janji"),
+            ("perjanjian", "janji"),
+            ("tandai", "tanda"),
+            ("dapati", "dapat"),
+            ("mendapati", "dapat"),
+            ("pantai", "panta"),
+            ("penyalahgunaan", "salahguna"),
+            ("menyalahgunakan", "salahguna"),
+            ("disalahgunakan", "salahguna"),
+            ("pertanggungjawaban", "tanggungjawab"),
+            ("mempertanggungjawabkan", "tanggungjawab"),
+            ("dipertanggungjawabkan", "tanggungjawab"),
+            ("pelaksanaan", "laksana"),
+            ("pelaksana", "laksana"),
+            ("melaksanakan", "laksana"),
+            ("dilaksanakan", "laksana"),
+            ("melibatkan", "libat"),
+            ("terlibat", "libat"),
+            ("penculikan", "culik"),
+            ("menculik", "culik"),
+            ("diculik", "culik"),
+            ("penculik", "culik"),
+            ("perubahan", "ubah"),
+            ("peledakan", "ledak"),
+            ("penanganan", "tangan"),
+            ("kepolisian", "polisi"),
+            ("kenaikan", "naik"),
+            ("bersenjata", "senjata"),
+            ("penyelewengan", "seleweng"),
+            ("kecelakaan", "celaka"),
+            ("gigi", "gigi"),
+        ] {
+            let mut token = make_token(input);
+            filter.filter(&mut token);
+            assert_eq!(token.term.as_ref(), expected, "vector {input}");
+        }
     }
 }

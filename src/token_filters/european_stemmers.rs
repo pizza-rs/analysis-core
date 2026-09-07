@@ -482,7 +482,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "portuguese light stemmer over-stems short words (gato→gat); min-stem guard needs Lucene parity check"]
     fn test_portuguese_light() {
         let filter = PortugueseLightStemTokenFilter::new();
         let mut token = make_token("gatos");

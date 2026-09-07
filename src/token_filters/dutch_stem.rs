@@ -4,6 +4,10 @@ use alloc::vec::Vec;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
 
+use super::snowball::Among;
+use super::snowball::Grouping;
+use super::snowball::SnowballCore;
+
 /// Dutch stemmer — faithful port of the Snowball 3.0.0 `dutch.sbl` algorithm
 /// as generated for Lucene (`org.tartarus.snowball.ext.DutchStemmer`).
 ///
@@ -36,15 +40,7 @@ impl TokenFilter for DutchStemTokenFilter {
     }
 }
 
-// ─── Snowball runtime primitives ────────────────────────────────────────────
-
-/// Character-group bitset, verbatim from the generated Java. A character is
-/// in the group when bit `(ch - min) % 8` of byte `(ch - min) / 8` is set.
-struct Grouping {
-    bits: &'static [u8],
-    min: u32,
-    max: u32,
-}
+// ─── Snowball runtime comes from snowball.rs ───────────────────────────────
 
 const G_E_BITS: [u8; 17] = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 120];
 const G_AIOU_BITS: [u8; 20] = [
@@ -85,10 +81,6 @@ const G_V_WX: Grouping = Grouping {
     min: 97,
     max: 252,
 };
-
-/// Among table: (string, result id). Longest match at the cursor wins, which
-/// is equivalent to the generated binary search over the same entries.
-type Among = &'static [(&'static str, i32)];
 
 const A_0: Among = &[
     ("a", 1),
@@ -220,12 +212,7 @@ const A_10: Among = &[("ë", 1), ("ï", 2)];
 const A_11: Among = &[("ë", 1), ("ï", 2)];
 
 struct DutchSnowball {
-    text: Vec<char>,
-    cursor: usize,
-    limit: usize,
-    limit_backward: usize,
-    bra: usize,
-    ket: usize,
+    core: SnowballCore,
     p1: usize,
     p2: usize,
     ge_removed: bool,
@@ -233,15 +220,10 @@ struct DutchSnowball {
 
 impl DutchSnowball {
     fn new(word: &str) -> Self {
-        let text: Vec<char> = word.chars().collect();
-        let limit = text.len();
+        let core = SnowballCore::new(word);
+        let limit = core.limit;
         DutchSnowball {
-            text,
-            cursor: 0,
-            limit,
-            limit_backward: 0,
-            bra: 0,
-            ket: limit,
+            core,
             p1: limit,
             p2: limit,
             ge_removed: false,
@@ -249,196 +231,67 @@ impl DutchSnowball {
     }
 
     fn result(&self) -> String {
-        self.text.iter().collect()
+        self.core.result()
     }
 
-    /// Save/restore a cursor position the way the generated code does:
-    /// relative to the (possibly shifted) current limit.
     fn save(&self) -> isize {
-        self.limit as isize - self.cursor as isize
+        self.core.save()
     }
 
     fn restore(&mut self, v: isize) {
-        self.cursor = (self.limit as isize - v) as usize;
+        self.core.restore(v)
     }
 
     fn in_grouping(&mut self, g: &Grouping) -> bool {
-        if self.cursor >= self.limit {
-            return false;
-        }
-        let ch = self.text[self.cursor] as u32;
-        if ch > g.max || ch < g.min {
-            return false;
-        }
-        let b = (ch - g.min) as usize;
-        if g.bits[b >> 3] & (1 << (b & 7)) == 0 {
-            return false;
-        }
-        self.cursor += 1;
-        true
+        self.core.in_grouping(g)
     }
 
     fn in_grouping_b(&mut self, g: &Grouping) -> bool {
-        if self.cursor <= self.limit_backward {
-            return false;
-        }
-        let ch = self.text[self.cursor - 1] as u32;
-        if ch > g.max || ch < g.min {
-            return false;
-        }
-        let b = (ch - g.min) as usize;
-        if g.bits[b >> 3] & (1 << (b & 7)) == 0 {
-            return false;
-        }
-        self.cursor -= 1;
-        true
+        self.core.in_grouping_b(g)
     }
 
     fn out_grouping(&mut self, g: &Grouping) -> bool {
-        if self.cursor >= self.limit {
-            return false;
-        }
-        let ch = self.text[self.cursor] as u32;
-        let in_group = ch <= g.max && ch >= g.min && {
-            let b = (ch - g.min) as usize;
-            g.bits[b >> 3] & (1 << (b & 7)) != 0
-        };
-        if in_group {
-            return false;
-        }
-        self.cursor += 1;
-        true
+        self.core.out_grouping(g)
     }
 
     fn out_grouping_b(&mut self, g: &Grouping) -> bool {
-        if self.cursor <= self.limit_backward {
-            return false;
-        }
-        let ch = self.text[self.cursor - 1] as u32;
-        let in_group = ch <= g.max && ch >= g.min && {
-            let b = (ch - g.min) as usize;
-            g.bits[b >> 3] & (1 << (b & 7)) != 0
-        };
-        if in_group {
-            return false;
-        }
-        self.cursor -= 1;
-        true
+        self.core.out_grouping_b(g)
     }
 
     fn eq_s(&mut self, s: &str) -> bool {
-        let l = s.chars().count();
-        if self.limit - self.cursor < l {
-            return false;
-        }
-        if !self.text[self.cursor..self.cursor + l]
-            .iter()
-            .copied()
-            .eq(s.chars())
-        {
-            return false;
-        }
-        self.cursor += l;
-        true
+        self.core.eq_s(s)
     }
 
     fn eq_s_b(&mut self, s: &str) -> bool {
-        let l = s.chars().count();
-        if self.cursor - self.limit_backward < l {
-            return false;
-        }
-        let start = self.cursor - l;
-        if !self.text[start..self.cursor].iter().copied().eq(s.chars()) {
-            return false;
-        }
-        self.cursor = start;
-        true
+        self.core.eq_s_b(s)
     }
 
     fn find_among(&mut self, v: Among) -> i32 {
-        let c = self.cursor;
-        let mut best: Option<(usize, i32)> = None;
-        for &(s, result) in v {
-            let l = s.chars().count();
-            if l <= self.limit - c
-                && self.text[c..c + l].iter().copied().eq(s.chars())
-                && best.is_none_or(|(bl, _)| l > bl)
-            {
-                best = Some((l, result));
-            }
-        }
-        match best {
-            Some((l, r)) => {
-                self.cursor = c + l;
-                r
-            }
-            None => 0,
-        }
+        self.core.find_among(v)
     }
 
     fn find_among_b(&mut self, v: Among) -> i32 {
-        let c = self.cursor;
-        let mut best: Option<(usize, i32)> = None;
-        for &(s, result) in v {
-            let l = s.chars().count();
-            if l <= c - self.limit_backward
-                && self.text[c - l..c].iter().copied().eq(s.chars())
-                && best.is_none_or(|(bl, _)| l > bl)
-            {
-                best = Some((l, result));
-            }
-        }
-        match best {
-            Some((l, r)) => {
-                self.cursor = c - l;
-                r
-            }
-            None => 0,
-        }
-    }
-
-    /// Port of `replace_s`: splice `s` over `[c_bra, c_ket)` and shift the
-    /// cursor per the Java runtime's adjustment rules.
-    fn replace_s(&mut self, c_bra: usize, c_ket: usize, s: &[char]) -> isize {
-        let adjustment = s.len() as isize - (c_ket - c_bra) as isize;
-        self.text.splice(c_bra..c_ket, s.iter().copied());
-        self.limit = (self.limit as isize + adjustment) as usize;
-        if self.cursor as isize >= c_ket as isize {
-            self.cursor = (self.cursor as isize + adjustment) as usize;
-        } else if self.cursor > c_bra {
-            self.cursor = c_bra;
-        }
-        adjustment
+        self.core.find_among_b(v)
     }
 
     fn slice_from_str(&mut self, s: &str) {
-        let s: Vec<char> = s.chars().collect();
-        let adjustment = self.replace_s(self.bra, self.ket, &s);
-        self.ket = (self.ket as isize + adjustment) as usize;
+        self.core.slice_from_str(s)
     }
 
     fn slice_del(&mut self) {
-        self.slice_from_str("");
+        self.core.slice_del()
     }
 
     fn insert_at(&mut self, c_bra: usize, c_ket: usize, s: &[char]) {
-        let adjustment = self.replace_s(c_bra, c_ket, s);
-        if c_bra <= self.bra {
-            self.bra = (self.bra as isize + adjustment) as usize;
-        }
-        if c_bra <= self.ket {
-            self.ket = (self.ket as isize + adjustment) as usize;
-        }
+        self.core.insert_at(c_bra, c_ket, s)
     }
 
-    // ─── helper tests on regions ────────────────────────────────────────────
-
     fn r_r1(&self) -> bool {
-        self.p1 <= self.cursor
+        self.p1 <= self.core.cursor
     }
 
     fn r_r2(&self) -> bool {
-        self.p2 <= self.cursor
+        self.p2 <= self.core.cursor
     }
 
     /// V: the text before the cursor ends in a vowel or "ij".
@@ -464,10 +317,10 @@ impl DutchSnowball {
     /// VX: the text one position before the cursor ends in a vowel or "ij".
     fn r_vx(&mut self) -> bool {
         let v_1 = self.save();
-        if self.cursor <= self.limit_backward {
+        if self.core.cursor <= self.core.limit_backward {
             return false;
         }
-        self.cursor -= 1;
+        self.core.cursor -= 1;
         'lab0: {
             let v_2 = self.save();
             'lab1: {
@@ -511,12 +364,12 @@ impl DutchSnowball {
             if !self.out_grouping_b(&G_V_WX) {
                 break 'lab0;
             }
-            self.ket = self.cursor;
+            self.core.ket = self.core.cursor;
             let among_var = self.find_among_b(A_0);
             if among_var == 0 {
                 break 'lab0;
             }
-            self.bra = self.cursor;
+            self.core.bra = self.core.cursor;
             match among_var {
                 1 => {
                     let v_2 = self.save();
@@ -529,15 +382,15 @@ impl DutchSnowball {
                             break 'lab1;
                         }
                         self.restore(v_3);
-                        if self.cursor > self.limit_backward {
+                        if self.core.cursor > self.core.limit_backward {
                             break 'lab0;
                         }
                     }
                     self.restore(v_2);
-                    let slice: Vec<char> = self.text[self.bra..self.ket].to_vec();
-                    let c = self.cursor;
-                    self.insert_at(self.cursor, self.cursor, &slice);
-                    self.cursor = c;
+                    let slice: Vec<char> = self.core.text[self.core.bra..self.core.ket].to_vec();
+                    let c = self.core.cursor;
+                    self.insert_at(self.core.cursor, self.core.cursor, &slice);
+                    self.core.cursor = c;
                 }
                 2 => {
                     let v_4 = self.save();
@@ -550,7 +403,7 @@ impl DutchSnowball {
                             break 'lab3;
                         }
                         self.restore(v_5);
-                        if self.cursor > self.limit_backward {
+                        if self.core.cursor > self.core.limit_backward {
                             break 'lab0;
                         }
                     }
@@ -568,7 +421,7 @@ impl DutchSnowball {
                             if !self.in_grouping_b(&G_E) {
                                 break 'lab5;
                             }
-                            if self.cursor > self.limit_backward {
+                            if self.core.cursor > self.core.limit_backward {
                                 break 'lab5;
                             }
                         }
@@ -577,10 +430,10 @@ impl DutchSnowball {
                     self.restore(v_6);
                     let v_8 = self.save();
                     'lab8: {
-                        if self.cursor <= self.limit_backward {
+                        if self.core.cursor <= self.core.limit_backward {
                             break 'lab8;
                         }
-                        self.cursor -= 1;
+                        self.core.cursor -= 1;
                         if !self.in_grouping_b(&G_AIOU) {
                             break 'lab8;
                         }
@@ -591,10 +444,10 @@ impl DutchSnowball {
                     }
                     self.restore(v_8);
                     self.restore(v_4);
-                    let slice: Vec<char> = self.text[self.bra..self.ket].to_vec();
-                    let c = self.cursor;
-                    self.insert_at(self.cursor, self.cursor, &slice);
-                    self.cursor = c;
+                    let slice: Vec<char> = self.core.text[self.core.bra..self.core.ket].to_vec();
+                    let c = self.core.cursor;
+                    self.insert_at(self.core.cursor, self.core.cursor, &slice);
+                    self.core.cursor = c;
                 }
                 3 => self.slice_from_str("eëe"),
                 4 => self.slice_from_str("iee"),
@@ -608,12 +461,12 @@ impl DutchSnowball {
     // ─── suffix steps ───────────────────────────────────────────────────────
 
     fn r_step_1(&mut self) -> bool {
-        self.ket = self.cursor;
+        self.core.ket = self.core.cursor;
         let among_var = self.find_among_b(A_1);
         if among_var == 0 {
             return false;
         }
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         match among_var {
             1 => self.slice_del(),
             2 => {
@@ -709,7 +562,7 @@ impl DutchSnowball {
                     if !self.r_r1() {
                         break 'lab5;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     self.slice_from_str("heid");
                     break 'lab4;
                 }
@@ -732,7 +585,7 @@ impl DutchSnowball {
                     if !self.r_c() {
                         break 'lab7;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     self.slice_del();
                     break 'lab4;
                 }
@@ -774,12 +627,12 @@ impl DutchSnowball {
     }
 
     fn r_step_2(&mut self) -> bool {
-        self.ket = self.cursor;
+        self.core.ket = self.core.cursor;
         let among_var = self.find_among_b(A_2);
         if among_var == 0 {
             return false;
         }
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         match among_var {
             1 => 'lab0: {
                 let v_1 = self.save();
@@ -787,7 +640,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("'t") {
                         break 'lab1;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     self.slice_del();
                     break 'lab0;
                 }
@@ -796,7 +649,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("et") {
                         break 'lab2;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     if !self.r_r1() {
                         break 'lab2;
                     }
@@ -811,7 +664,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("rnt") {
                         break 'lab3;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     self.slice_from_str("rn");
                     break 'lab0;
                 }
@@ -820,7 +673,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("t") {
                         break 'lab4;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     if !self.r_r1() {
                         break 'lab4;
                     }
@@ -835,7 +688,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("ink") {
                         break 'lab5;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     self.slice_from_str("ing");
                     break 'lab0;
                 }
@@ -844,7 +697,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("mp") {
                         break 'lab6;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     self.slice_from_str("m");
                     break 'lab0;
                 }
@@ -853,7 +706,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("'") {
                         break 'lab7;
                     }
-                    self.bra = self.cursor;
+                    self.core.bra = self.core.cursor;
                     if !self.r_r1() {
                         break 'lab7;
                     }
@@ -861,7 +714,7 @@ impl DutchSnowball {
                     break 'lab0;
                 }
                 self.restore(v_1);
-                self.bra = self.cursor;
+                self.core.bra = self.core.cursor;
                 if !self.r_r1() {
                     return false;
                 }
@@ -921,7 +774,7 @@ impl DutchSnowball {
                 }
                 self.slice_del();
                 let ins = ['l'];
-                self.insert_at(self.cursor, self.cursor, &ins);
+                self.insert_at(self.core.cursor, self.core.cursor, &ins);
                 self.r_lengthen_v();
             }
             10 => {
@@ -933,7 +786,7 @@ impl DutchSnowball {
                 }
                 self.slice_del();
                 let ins = ['e', 'n'];
-                self.insert_at(self.cursor, self.cursor, &ins);
+                self.insert_at(self.core.cursor, self.core.cursor, &ins);
                 self.r_lengthen_v();
             }
             11 => {
@@ -951,12 +804,12 @@ impl DutchSnowball {
     }
 
     fn r_step_3(&mut self) -> bool {
-        self.ket = self.cursor;
+        self.core.ket = self.core.cursor;
         let among_var = self.find_among_b(A_3);
         if among_var == 0 {
             return false;
         }
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         match among_var {
             1 => {
                 if !self.r_r1() {
@@ -1009,7 +862,7 @@ impl DutchSnowball {
                 }
                 self.slice_del();
                 let ins = ['f'];
-                self.insert_at(self.cursor, self.cursor, &ins);
+                self.insert_at(self.core.cursor, self.core.cursor, &ins);
                 self.r_lengthen_v();
             }
             8 => {
@@ -1018,7 +871,7 @@ impl DutchSnowball {
                 }
                 self.slice_del();
                 let ins = ['g'];
-                self.insert_at(self.cursor, self.cursor, &ins);
+                self.insert_at(self.core.cursor, self.core.cursor, &ins);
                 self.r_lengthen_v();
             }
             9 => {
@@ -1048,12 +901,12 @@ impl DutchSnowball {
         'lab0: {
             let v_1 = self.save();
             'lab1: {
-                self.ket = self.cursor;
+                self.core.ket = self.core.cursor;
                 let among_var = self.find_among_b(A_4);
                 if among_var == 0 {
                     break 'lab1;
                 }
-                self.bra = self.cursor;
+                self.core.bra = self.core.cursor;
                 match among_var {
                     1 => {
                         if !self.r_r1() {
@@ -1127,11 +980,11 @@ impl DutchSnowball {
                 break 'lab0;
             }
             self.restore(v_1);
-            self.ket = self.cursor;
+            self.core.ket = self.core.cursor;
             if self.find_among_b(A_5) == 0 {
                 return false;
             }
-            self.bra = self.cursor;
+            self.core.bra = self.core.cursor;
             if !self.r_r1() {
                 return false;
             }
@@ -1140,7 +993,7 @@ impl DutchSnowball {
                 if !self.eq_s_b("inn") {
                     break 'lab2;
                 }
-                if self.cursor > self.limit_backward {
+                if self.core.cursor > self.core.limit_backward {
                     break 'lab2;
                 }
                 return false;
@@ -1156,12 +1009,12 @@ impl DutchSnowball {
     }
 
     fn r_step_7(&mut self) -> bool {
-        self.ket = self.cursor;
+        self.core.ket = self.core.cursor;
         let among_var = self.find_among_b(A_6);
         if among_var == 0 {
             return false;
         }
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         match among_var {
             1 => self.slice_from_str("k"),
             2 => self.slice_from_str("f"),
@@ -1172,12 +1025,12 @@ impl DutchSnowball {
     }
 
     fn r_step_6(&mut self) -> bool {
-        self.ket = self.cursor;
+        self.core.ket = self.core.cursor;
         let among_var = self.find_among_b(A_7);
         if among_var == 0 {
             return false;
         }
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         match among_var {
             1 => self.slice_from_str("b"),
             2 => self.slice_from_str("c"),
@@ -1195,7 +1048,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("i") {
                         break 'lab0;
                     }
-                    if self.cursor > self.limit_backward {
+                    if self.core.cursor > self.core.limit_backward {
                         break 'lab0;
                     }
                     return false;
@@ -1220,12 +1073,12 @@ impl DutchSnowball {
     /// Residual suffix step run after `ge-` removal: strip `d`/`t` after a
     /// consonant, with special handling for -nd/-cht clusters.
     fn r_step_1c(&mut self) -> bool {
-        self.ket = self.cursor;
+        self.core.ket = self.core.cursor;
         let among_var = self.find_among_b(A_8);
         if among_var == 0 {
             return false;
         }
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         if !self.r_r1() {
             return false;
         }
@@ -1251,7 +1104,7 @@ impl DutchSnowball {
                         if !self.eq_s_b("in") {
                             break 'lab2;
                         }
-                        if self.cursor > self.limit_backward {
+                        if self.core.cursor > self.core.limit_backward {
                             break 'lab2;
                         }
                         self.slice_from_str("n");
@@ -1278,7 +1131,7 @@ impl DutchSnowball {
                     if !self.eq_s_b("en") {
                         break 'lab4;
                     }
-                    if self.cursor > self.limit_backward {
+                    if self.core.cursor > self.core.limit_backward {
                         break 'lab4;
                     }
                     return false;
@@ -1294,189 +1147,189 @@ impl DutchSnowball {
     // ─── ge- prefix / infix removal ─────────────────────────────────────────
 
     fn r_lose_prefix(&mut self) -> bool {
-        self.bra = self.cursor;
+        self.core.bra = self.core.cursor;
         if !self.eq_s("ge") {
             return false;
         }
-        self.ket = self.cursor;
-        let v_1 = self.cursor;
-        if self.cursor + 3 > self.limit {
+        self.core.ket = self.core.cursor;
+        let v_1 = self.core.cursor;
+        if self.core.cursor + 3 > self.core.limit {
             return false;
         }
-        self.cursor = v_1;
-        let v_2 = self.cursor;
+        self.core.cursor = v_1;
+        let v_2 = self.core.cursor;
         // advance to the first vowel or "ij" after the prefix
         'golab0: loop {
-            let v_3 = self.cursor;
+            let v_3 = self.core.cursor;
             'lab1: {
                 'lab2: {
-                    let v_4 = self.cursor;
+                    let v_4 = self.core.cursor;
                     'lab3: {
                         if !self.eq_s("ij") {
                             break 'lab3;
                         }
                         break 'lab2;
                     }
-                    self.cursor = v_4;
+                    self.core.cursor = v_4;
                     if !self.in_grouping(&G_V) {
                         break 'lab1;
                     }
                 }
                 break 'golab0;
             }
-            self.cursor = v_3;
-            if self.cursor >= self.limit {
+            self.core.cursor = v_3;
+            if self.core.cursor >= self.core.limit {
                 return false;
             }
-            self.cursor += 1;
+            self.core.cursor += 1;
         }
         // consume the rest of the vowel run
         'run0: loop {
-            let v_5 = self.cursor;
+            let v_5 = self.core.cursor;
             'lab4: {
                 'lab5: {
-                    let v_6 = self.cursor;
+                    let v_6 = self.core.cursor;
                     'lab6: {
                         if !self.eq_s("ij") {
                             break 'lab6;
                         }
                         break 'lab5;
                     }
-                    self.cursor = v_6;
+                    self.core.cursor = v_6;
                     if !self.in_grouping(&G_V) {
                         break 'lab4;
                     }
                 }
                 continue 'run0;
             }
-            self.cursor = v_5;
+            self.core.cursor = v_5;
             break 'run0;
         }
-        if self.cursor >= self.limit {
+        if self.core.cursor >= self.core.limit {
             return false;
         }
-        self.cursor = v_2;
+        self.core.cursor = v_2;
         if self.find_among(A_9) == 1 {
             return false;
         }
         self.ge_removed = true;
         self.slice_del();
-        let v_7 = self.cursor;
+        let v_7 = self.core.cursor;
         'lab8: {
-            self.bra = self.cursor;
+            self.core.bra = self.core.cursor;
             let among_var = self.find_among(A_10);
             if among_var == 0 {
                 break 'lab8;
             }
-            self.ket = self.cursor;
+            self.core.ket = self.core.cursor;
             match among_var {
                 1 => self.slice_from_str("e"),
                 2 => self.slice_from_str("i"),
                 _ => {}
             }
         }
-        self.cursor = v_7;
+        self.core.cursor = v_7;
         true
     }
 
     fn r_lose_infix(&mut self) -> bool {
-        if self.cursor >= self.limit {
+        if self.core.cursor >= self.core.limit {
             return false;
         }
-        self.cursor += 1;
+        self.core.cursor += 1;
         // find the first "ge" after the opening character
         'golab0: loop {
-            self.bra = self.cursor;
+            self.core.bra = self.core.cursor;
             if self.eq_s("ge") {
-                self.ket = self.cursor;
+                self.core.ket = self.core.cursor;
                 break 'golab0;
             }
-            if self.cursor >= self.limit {
+            if self.core.cursor >= self.core.limit {
                 return false;
             }
-            self.cursor += 1;
+            self.core.cursor += 1;
         }
-        let v_1 = self.cursor;
-        if self.cursor + 3 > self.limit {
+        let v_1 = self.core.cursor;
+        if self.core.cursor + 3 > self.core.limit {
             return false;
         }
-        self.cursor = v_1;
-        let v_2 = self.cursor;
+        self.core.cursor = v_1;
+        let v_2 = self.core.cursor;
         'golab2: loop {
-            let v_3 = self.cursor;
+            let v_3 = self.core.cursor;
             'lab3: {
                 'lab4: {
-                    let v_4 = self.cursor;
+                    let v_4 = self.core.cursor;
                     'lab5: {
                         if !self.eq_s("ij") {
                             break 'lab5;
                         }
                         break 'lab4;
                     }
-                    self.cursor = v_4;
+                    self.core.cursor = v_4;
                     if !self.in_grouping(&G_V) {
                         break 'lab3;
                     }
                 }
                 break 'golab2;
             }
-            self.cursor = v_3;
-            if self.cursor >= self.limit {
+            self.core.cursor = v_3;
+            if self.core.cursor >= self.core.limit {
                 return false;
             }
-            self.cursor += 1;
+            self.core.cursor += 1;
         }
         'run1: loop {
-            let v_5 = self.cursor;
+            let v_5 = self.core.cursor;
             'lab6: {
                 'lab7: {
-                    let v_6 = self.cursor;
+                    let v_6 = self.core.cursor;
                     'lab8: {
                         if !self.eq_s("ij") {
                             break 'lab8;
                         }
                         break 'lab7;
                     }
-                    self.cursor = v_6;
+                    self.core.cursor = v_6;
                     if !self.in_grouping(&G_V) {
                         break 'lab6;
                     }
                 }
                 continue 'run1;
             }
-            self.cursor = v_5;
+            self.core.cursor = v_5;
             break 'run1;
         }
-        if self.cursor >= self.limit {
+        if self.core.cursor >= self.core.limit {
             return false;
         }
-        self.cursor = v_2;
+        self.core.cursor = v_2;
         self.ge_removed = true;
         self.slice_del();
-        let v_7 = self.cursor;
+        let v_7 = self.core.cursor;
         'lab10: {
-            self.bra = self.cursor;
+            self.core.bra = self.core.cursor;
             let among_var = self.find_among(A_11);
             if among_var == 0 {
                 break 'lab10;
             }
-            self.ket = self.cursor;
+            self.core.ket = self.core.cursor;
             match among_var {
                 1 => self.slice_from_str("e"),
                 2 => self.slice_from_str("i"),
                 _ => {}
             }
         }
-        self.cursor = v_7;
+        self.core.cursor = v_7;
         true
     }
 
     // ─── R1/R2 measure ──────────────────────────────────────────────────────
 
     fn r_measure(&mut self) -> bool {
-        self.p1 = self.limit;
-        self.p2 = self.limit;
-        let v_1 = self.cursor;
+        self.p1 = self.core.limit;
+        self.p2 = self.core.limit;
+        let v_1 = self.core.cursor;
         'lab0: {
             // go past any non-vowels
             'skip1: loop {
@@ -1491,17 +1344,17 @@ impl DutchSnowball {
             // one vowel run (vowels or "ij")
             let mut v_2: i32 = 1;
             'run1: loop {
-                let v_3 = self.cursor;
+                let v_3 = self.core.cursor;
                 'lab2: {
                     'lab3: {
-                        let v_4 = self.cursor;
+                        let v_4 = self.core.cursor;
                         'lab4: {
                             if !self.eq_s("ij") {
                                 break 'lab4;
                             }
                             break 'lab3;
                         }
-                        self.cursor = v_4;
+                        self.core.cursor = v_4;
                         if !self.in_grouping(&G_V) {
                             break 'lab2;
                         }
@@ -1509,7 +1362,7 @@ impl DutchSnowball {
                     v_2 = v_2.wrapping_sub(1);
                     continue 'run1;
                 }
-                self.cursor = v_3;
+                self.core.cursor = v_3;
                 break 'run1;
             }
             if v_2 > 0 {
@@ -1518,7 +1371,7 @@ impl DutchSnowball {
             if !self.out_grouping(&G_V) {
                 break 'lab0;
             }
-            self.p1 = self.cursor;
+            self.p1 = self.core.cursor;
             // and again for p2
             'skip2: loop {
                 'lab5: {
@@ -1531,17 +1384,17 @@ impl DutchSnowball {
             }
             let mut v_5: i32 = 1;
             'run2: loop {
-                let v_6 = self.cursor;
+                let v_6 = self.core.cursor;
                 'lab6: {
                     'lab7: {
-                        let v_7 = self.cursor;
+                        let v_7 = self.core.cursor;
                         'lab8: {
                             if !self.eq_s("ij") {
                                 break 'lab8;
                             }
                             break 'lab7;
                         }
-                        self.cursor = v_7;
+                        self.core.cursor = v_7;
                         if !self.in_grouping(&G_V) {
                             break 'lab6;
                         }
@@ -1549,7 +1402,7 @@ impl DutchSnowball {
                     v_5 = v_5.wrapping_sub(1);
                     continue 'run2;
                 }
-                self.cursor = v_6;
+                self.core.cursor = v_6;
                 break 'run2;
             }
             if v_5 > 0 {
@@ -1558,9 +1411,9 @@ impl DutchSnowball {
             if !self.out_grouping(&G_V) {
                 break 'lab0;
             }
-            self.p2 = self.cursor;
+            self.p2 = self.core.cursor;
         }
-        self.cursor = v_1;
+        self.core.cursor = v_1;
         true
     }
 
@@ -1569,8 +1422,8 @@ impl DutchSnowball {
     fn stem(&mut self) -> bool {
         let mut stemmed = false;
         self.r_measure();
-        self.limit_backward = self.cursor;
-        self.cursor = self.limit;
+        self.core.limit_backward = self.core.cursor;
+        self.core.cursor = self.core.limit;
 
         let v_1 = self.save();
         if self.r_step_1() {
@@ -1593,19 +1446,19 @@ impl DutchSnowball {
         }
         self.restore(v_4);
 
-        self.cursor = self.limit_backward;
+        self.core.cursor = self.core.limit_backward;
         self.ge_removed = false;
-        let v_5 = self.cursor;
+        let v_5 = self.core.cursor;
         {
-            let v_6 = self.cursor;
+            let v_6 = self.core.cursor;
             if self.r_lose_prefix() {
-                self.cursor = v_6;
+                self.core.cursor = v_6;
                 self.r_measure();
             }
         }
-        self.cursor = v_5;
-        self.limit_backward = self.cursor;
-        self.cursor = self.limit;
+        self.core.cursor = v_5;
+        self.core.limit_backward = self.core.cursor;
+        self.core.cursor = self.core.limit;
         let v_7 = self.save();
         if self.ge_removed {
             stemmed = true;
@@ -1613,27 +1466,27 @@ impl DutchSnowball {
         }
         self.restore(v_7);
 
-        self.cursor = self.limit_backward;
+        self.core.cursor = self.core.limit_backward;
         self.ge_removed = false;
-        let v_8 = self.cursor;
+        let v_8 = self.core.cursor;
         {
-            let v_9 = self.cursor;
+            let v_9 = self.core.cursor;
             if self.r_lose_infix() {
-                self.cursor = v_9;
+                self.core.cursor = v_9;
                 self.r_measure();
             }
         }
-        self.cursor = v_8;
-        self.limit_backward = self.cursor;
-        self.cursor = self.limit;
+        self.core.cursor = v_8;
+        self.core.limit_backward = self.core.cursor;
+        self.core.cursor = self.core.limit;
         let v_10 = self.save();
         if self.ge_removed {
             stemmed = true;
             self.r_step_1c();
         }
         self.restore(v_10);
-        self.cursor = self.limit_backward;
-        self.cursor = self.limit;
+        self.core.cursor = self.core.limit_backward;
+        self.core.cursor = self.core.limit;
 
         let v_11 = self.save();
         if self.r_step_7() {
@@ -1645,7 +1498,7 @@ impl DutchSnowball {
             self.r_step_6();
         }
         self.restore(v_12);
-        self.cursor = self.limit_backward;
+        self.core.cursor = self.core.limit_backward;
         true
     }
 }

@@ -94,166 +94,186 @@ impl TokenFilter for PhoneticTokenFilter {
 // METAPHONE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Encodes a word using the Metaphone algorithm.
+/// Encodes a word using the Metaphone algorithm — faithful port of Apache
+/// Commons Codec `Metaphone` (the implementation ES's phonetic plugin uses).
+/// Note SCH encodes as SK (e.g. Schmidt → SKMT), matching the reference.
 pub fn metaphone(word: &str, max_length: usize) -> String {
-    let word = word.to_uppercase();
-    let chars: Vec<char> = word.chars().filter(|c| c.is_ascii_alphabetic()).collect();
-    let len = chars.len();
+    const VOWELS: &str = "AEIOU";
+    const FRONTV: &str = "EIY";
+    const VARSON: &str = "CSPTG";
+    let max_code_len = if max_length == 0 { 4 } else { max_length };
 
-    if len == 0 {
+    let txt: Vec<char> = word.to_uppercase().chars().collect();
+    if txt.is_empty() {
         return String::new();
     }
+    if txt.len() == 1 {
+        return txt.iter().collect();
+    }
 
-    let max_len = if max_length == 0 { 4 } else { max_length };
-    let mut result = String::with_capacity(max_len);
-    let mut i = 0;
-
-    // Handle initial silent letters
-    match chars[0] {
-        'A' if len > 1 && chars[1] == 'E' => i = 1,
-        'G' | 'K' | 'P' if len > 1 && chars[1] == 'N' => i = 1,
-        'W' if len > 1 && chars[1] == 'R' => i = 1,
+    // handle initial 2-character exceptions
+    let mut local: Vec<char> = txt.clone();
+    match txt[0] {
+        'K' | 'G' | 'P' => {
+            if txt[1] == 'N' {
+                local = txt[1..].to_vec();
+            }
+        }
+        'A' => {
+            if txt[1] == 'E' {
+                local = txt[1..].to_vec();
+            }
+        }
+        'W' => {
+            if txt[1] == 'R' {
+                local = txt[1..].to_vec();
+            } else if txt[1] == 'H' {
+                local = txt[1..].to_vec();
+                local[0] = 'W'; // WH -> W
+            }
+        }
         'X' => {
-            result.push('S');
-            i = 1;
+            local[0] = 'S';
         }
         _ => {}
     }
 
-    while i < len && result.len() < max_len {
-        let c = chars[i];
-        let prev = if i > 0 { Some(chars[i - 1]) } else { None };
-        let next = if i + 1 < len {
-            Some(chars[i + 1])
-        } else {
-            None
-        };
+    let wdsz = local.len();
+    let is_vowel = |n: usize| n < wdsz && VOWELS.contains(local[n]);
+    let is_prev = |n: usize, c: char| n > 0 && local[n - 1] == c;
+    let is_next = |n: usize, c: char| n + 1 < wdsz && local[n + 1] == c;
+    let is_last = |n: usize| n + 1 == wdsz;
+    let region_match = |n: usize, test: &str| {
+        let tc: Vec<char> = test.chars().collect();
+        n + tc.len() <= wdsz && local[n..n + tc.len()] == tc[..]
+    };
 
-        // Skip duplicate adjacent letters (except C)
-        if c != 'C' && prev == Some(c) {
-            i += 1;
-            continue;
-        }
-
-        match c {
-            'A' | 'E' | 'I' | 'O' | 'U' => {
-                if i == 0 {
-                    result.push(c);
-                }
-            }
-            'B' => {
-                if prev != Some('M') || i == len - 1 {
-                    result.push('B');
-                }
-            }
-            'C' => {
-                if next == Some('I') || next == Some('E') || next == Some('Y') {
-                    if next == Some('I') && i + 2 < len && chars[i + 2] == 'A' {
-                        result.push('X');
-                    } else {
-                        result.push('S');
+    let mut code = String::new();
+    let mut n = 0;
+    while code.chars().count() < max_code_len && n < wdsz {
+        let symb = local[n];
+        // remove duplicate letters except C
+        if symb == 'C' || !is_prev(n, symb) {
+            match symb {
+                'A' | 'E' | 'I' | 'O' | 'U' => {
+                    if n == 0 {
+                        code.push(symb); // only use vowel if leading char
                     }
-                } else {
-                    result.push('K');
                 }
-            }
-            'D' => {
-                if next == Some('G')
-                    && i + 2 < len
-                    && (chars[i + 2] == 'I' || chars[i + 2] == 'E' || chars[i + 2] == 'Y')
-                {
-                    result.push('J');
-                } else {
-                    result.push('T');
+                'B' => {
+                    // B silent if word ends in MB
+                    if !(is_prev(n, 'M') && is_last(n)) {
+                        code.push(symb);
+                    }
                 }
-            }
-            'F' => result.push('F'),
-            'G' => {
-                if i + 1 < len {
-                    if next == Some('H') && i + 2 < len && !is_vowel(chars[i + 2]) {
-                        // GH before non-vowel is silent
-                    } else if i > 0 && (next == Some('N') || (next == Some('N') && i + 2 >= len)) {
-                        // GN at end is silent
-                    } else if prev == Some('G') {
-                        // double G
+                'C' => {
+                    // discard if SCI, SCE or SCY
+                    if is_prev(n, 'S') && !is_last(n) && FRONTV.contains(local[n + 1]) {
+                        // SCH -> SK
+                    } else if is_prev(n, 'S') && is_next(n, 'H') {
+                        code.push('K');
+                    } else if region_match(n, "CIA") || is_next(n, 'H') {
+                        code.push('X'); // CIA -> X or CH -> X
+                    } else if !is_last(n) && FRONTV.contains(local[n + 1]) {
+                        code.push('S'); // CI, CE, CY -> S
                     } else {
-                        if !(i > 0 && (next == Some('I') || next == Some('E') || next == Some('Y')))
-                        {
-                            result.push('K');
-                        } else if i == 0 {
-                            result.push('J');
+                        code.push('K');
+                    }
+                }
+                'D' => {
+                    // DGE, DGI, DGY -> J
+                    if !is_last(n + 1) && is_next(n, 'G') && FRONTV.contains(local[n + 2]) {
+                        code.push('J');
+                        n += 2;
+                    } else {
+                        code.push('T');
+                    }
+                }
+                'G' => {
+                    // GH silent at end or before consonant
+                    if is_last(n + 1) && is_next(n, 'H') {
+                        // silent
+                    } else if !is_last(n + 1) && is_next(n, 'H') && !is_vowel(n + 2) {
+                        // silent
+                    } else if n > 0 && (region_match(n, "GN") || region_match(n, "GNED")) {
+                        // silent G
+                    } else {
+                        let hard = is_prev(n, 'G');
+                        if !is_last(n) && FRONTV.contains(local[n + 1]) && !hard {
+                            code.push('J');
+                        } else {
+                            code.push('K');
                         }
                     }
                 }
-            }
-            'H' => {
-                if is_vowel_opt(next) && (i == 0 || !is_vowel_opt(prev)) {
-                    result.push('H');
+                'H' => {
+                    if is_last(n) {
+                        // terminal H
+                    } else if n > 0 && VARSON.contains(local[n - 1]) {
+                        // silent after CSPTG
+                    } else if is_vowel(n + 1) {
+                        code.push('H');
+                    }
                 }
-            }
-            'J' => result.push('J'),
-            'K' => {
-                if prev != Some('C') {
-                    result.push('K');
+                'F' | 'J' | 'L' | 'M' | 'N' | 'R' => code.push(symb),
+                'K' => {
+                    if n > 0 {
+                        if !is_prev(n, 'C') {
+                            code.push(symb);
+                        }
+                    } else {
+                        code.push(symb); // initial K
+                    }
                 }
-            }
-            'L' => result.push('L'),
-            'M' => result.push('M'),
-            'N' => result.push('N'),
-            'P' => {
-                if next == Some('H') {
-                    result.push('F');
-                    i += 1;
-                } else {
-                    result.push('P');
+                'P' => {
+                    if is_next(n, 'H') {
+                        code.push('F'); // PH -> F
+                    } else {
+                        code.push(symb);
+                    }
                 }
-            }
-            'Q' => result.push('K'),
-            'R' => result.push('R'),
-            'S' => {
-                if next == Some('H')
-                    || (next == Some('I')
-                        && i + 2 < len
-                        && (chars[i + 2] == 'O' || chars[i + 2] == 'A'))
-                {
-                    result.push('X');
-                    i += 1;
-                } else {
-                    result.push('S');
+                'Q' => code.push('K'),
+                'S' => {
+                    if region_match(n, "SH") || region_match(n, "SIO") || region_match(n, "SIA") {
+                        code.push('X');
+                    } else {
+                        code.push('S');
+                    }
                 }
-            }
-            'T' => {
-                if next == Some('H') {
-                    result.push('0'); // theta
-                    i += 1;
-                } else if next == Some('I')
-                    && i + 2 < len
-                    && (chars[i + 2] == 'A' || chars[i + 2] == 'O')
-                {
-                    result.push('X');
-                } else {
-                    result.push('T');
+                'T' => {
+                    if region_match(n, "TIA") || region_match(n, "TIO") {
+                        code.push('X');
+                    } else if region_match(n, "TCH") {
+                        // silent in TCH
+                    } else if region_match(n, "TH") {
+                        code.push('0'); // theta
+                    } else {
+                        code.push('T');
+                    }
                 }
-            }
-            'V' => result.push('F'),
-            'W' | 'Y' => {
-                if is_vowel_opt(next) {
-                    result.push(c);
+                'V' => code.push('F'),
+                'W' | 'Y' => {
+                    // silent if not followed by vowel
+                    if !is_last(n) && is_vowel(n + 1) {
+                        code.push(symb);
+                    }
                 }
-            }
-            'X' => {
-                result.push('K');
-                if result.len() < max_len {
-                    result.push('S');
+                'X' => {
+                    code.push('K');
+                    code.push('S');
                 }
+                'Z' => code.push('S'),
+                _ => {}
             }
-            'Z' => result.push('S'),
-            _ => {}
         }
-        i += 1;
+        n += 1;
+        let count = code.chars().count();
+        if count > max_code_len {
+            let keep: String = code.chars().take(max_code_len).collect();
+            code = keep;
+        }
     }
-
-    result
+    code
 }
 
 fn is_vowel(c: char) -> bool {
@@ -479,117 +499,100 @@ pub fn caverphone2(word: &str) -> String {
 // COLOGNE PHONETIC (Kölner Phonetik)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/// Cologne phonetic algorithm (Kölner Phonetik) for German names.
+/// Cologne phonetic algorithm (Kölner Phonetik) for German names —
+/// faithful port of Apache Commons Codec `ColognePhonetic`, including its
+/// single-pass output rules: `0` is only emitted for a leading vowel run,
+/// consecutive equal codes collapse, and H is a pure separator.
 pub fn cologne_phonetic(word: &str) -> String {
-    let word = word.to_uppercase();
-    let chars: Vec<char> = word.chars().filter(|c| c.is_ascii_alphabetic()).collect();
+    const AEIJOUY: &str = "AEIJOUY";
+    const CSZ: &str = "CSZ";
+    const FPVW: &str = "FPVW";
+    const GKQ: &str = "GKQ";
+    const CKQ: &str = "CKQ";
+    const AHKLOQRUX: &str = "AHKLOQRUX";
+    const SZ: &str = "SZ";
+    const AHKOQUX: &str = "AHKOQUX";
+    const DTX: &str = "DTX";
+    const CHAR_IGNORE: char = '-';
+
+    // preprocess: German uppercase (ß → SS) + fold umlauts to base vowels
+    let chars: Vec<char> = word
+        .to_uppercase()
+        .chars()
+        .map(|c| match c {
+            'Ä' => 'A',
+            'Ö' => 'O',
+            'Ü' => 'U',
+            other => other,
+        })
+        .collect();
+
+    let mut out = String::new();
+    let mut last_code = '/'; // impossible value
+    let mut last_char = CHAR_IGNORE;
+
+    // Store a code honoring the reference's dedup rules: '0' only survives
+    // as the very first code; the ignore marker is never stored and never
+    // updates the last-code memory.
+    fn put(out: &mut String, last_code: &mut char, code: char) {
+        let accept = code != CHAR_IGNORE;
+        let non_z = code != '0';
+        if accept && *last_code != code && (non_z || out.is_empty()) {
+            out.push(code);
+        }
+        if non_z && accept {
+            *last_code = code;
+        }
+    }
+
     let len = chars.len();
-
-    if len == 0 {
-        return String::new();
-    }
-
-    let mut codes: Vec<char> = Vec::with_capacity(len);
-
     for i in 0..len {
-        let c = chars[i];
-        let prev = if i > 0 { Some(chars[i - 1]) } else { None };
-        let next = if i + 1 < len {
-            Some(chars[i + 1])
-        } else {
-            None
-        };
-
-        let code = match c {
-            'A' | 'E' | 'I' | 'J' | 'O' | 'U' | 'Y' => '0',
-            'H' => continue,
-            'B' | 'P' => {
-                if next == Some('H') {
-                    '3'
-                } else {
-                    '1'
-                }
-            }
-            'D' | 'T' => {
-                if next == Some('C') || next == Some('S') || next == Some('Z') {
-                    '8'
-                } else {
-                    '2'
-                }
-            }
-            'F' | 'V' | 'W' => '3',
-            'G' | 'K' | 'Q' => '4',
-            'X' => {
-                if prev == Some('C') || prev == Some('K') || prev == Some('Q') {
-                    '8'
-                } else {
-                    '\0' // sentinel: X produces "48" (two codes), handled below
-                }
-            }
-            'L' => '5',
-            'M' | 'N' => '6',
-            'R' => '7',
-            'S' | 'Z' => '8',
-            'C' => {
-                if i == 0 {
-                    if next == Some('A')
-                        || next == Some('H')
-                        || next == Some('K')
-                        || next == Some('L')
-                        || next == Some('O')
-                        || next == Some('Q')
-                        || next == Some('R')
-                        || next == Some('U')
-                        || next == Some('X')
-                    {
-                        '4'
-                    } else {
-                        '8'
-                    }
-                } else if prev == Some('S') || prev == Some('Z') {
-                    '8'
-                } else if next == Some('A')
-                    || next == Some('H')
-                    || next == Some('K')
-                    || next == Some('O')
-                    || next == Some('Q')
-                    || next == Some('U')
-                    || next == Some('X')
-                {
-                    '4'
-                } else {
-                    '8'
-                }
-            }
-            _ => continue,
-        };
-
-        // Handle X special case (produces two codes: 4, 8)
-        if c == 'X' && !(prev == Some('C') || prev == Some('K') || prev == Some('Q')) {
-            codes.push('4');
-            codes.push('8');
-        } else {
-            codes.push(code);
+        let chr = chars[i];
+        let next = chars.get(i + 1).copied().unwrap_or(CHAR_IGNORE);
+        if !chr.is_ascii_uppercase() {
+            continue;
         }
-    }
-
-    // Remove consecutive duplicates
-    let mut result = String::new();
-    let mut last = '\0';
-    for &code in &codes {
-        if code != last {
-            result.push(code);
-            last = code;
+        if AEIJOUY.contains(chr) {
+            put(&mut out, &mut last_code, '0');
+        } else if chr == 'B' || chr == 'P' && next != 'H' {
+            put(&mut out, &mut last_code, '1');
+        } else if (chr == 'D' || chr == 'T') && !CSZ.contains(next) {
+            put(&mut out, &mut last_code, '2');
+        } else if FPVW.contains(chr) {
+            put(&mut out, &mut last_code, '3');
+        } else if GKQ.contains(chr) {
+            put(&mut out, &mut last_code, '4');
+        } else if chr == 'X' && !CKQ.contains(last_char) {
+            put(&mut out, &mut last_code, '4');
+            put(&mut out, &mut last_code, '8');
+        } else if chr == 'S' || chr == 'Z' {
+            put(&mut out, &mut last_code, '8');
+        } else if chr == 'C' {
+            if out.is_empty() {
+                if AHKLOQRUX.contains(next) {
+                    put(&mut out, &mut last_code, '4');
+                } else {
+                    put(&mut out, &mut last_code, '8');
+                }
+            } else if SZ.contains(last_char) || !AHKOQUX.contains(next) {
+                put(&mut out, &mut last_code, '8');
+            } else {
+                put(&mut out, &mut last_code, '4');
+            }
+        } else if DTX.contains(chr) {
+            put(&mut out, &mut last_code, '8');
+        } else {
+            match chr {
+                'R' => put(&mut out, &mut last_code, '7'),
+                'L' => put(&mut out, &mut last_code, '5'),
+                'M' | 'N' => put(&mut out, &mut last_code, '6'),
+                'H' => put(&mut out, &mut last_code, CHAR_IGNORE),
+                _ => {}
+            }
         }
+        last_char = chr;
     }
-
-    // Remove leading zeros (except if the whole string is "0")
-    let trimmed = result.trim_start_matches('0');
-    if trimmed.is_empty() {
-        String::from("0")
-    } else {
-        String::from(trimmed)
-    }
+    out
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -888,17 +891,129 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "metaphone diverges from the expected vector (SXMT vs SKMT); needs reference verification"]
     fn test_metaphone() {
+        // commons-codec reference: SCH encodes as SK
         assert_eq!(metaphone("Smith", 4), "SM0");
-        assert_eq!(metaphone("Schmidt", 4), "SXMT");
+        assert_eq!(metaphone("Schmidt", 4), "SKMT");
+    }
+
+    // Vectors from Apache Commons Codec MetaphoneTest (default code
+    // length 4 unless noted).
+    #[test]
+    fn test_metaphone_commons_vectors() {
+        for (expected, input) in [
+            ("SNS", "SCIENCE"),
+            ("SN", "SCENE"),
+            ("S", "SCY"),
+            ("N", "GNU"),
+            ("SNT", "SIGNED"),
+            ("KNT", "GHENT"),
+            ("B", "BAUGH"),
+            ("AKSK", "AXEAXE"),
+            ("HL", "howl"),
+            ("TSTN", "testing"),
+            ("0", "The"),
+            ("KK", "quick"),
+            ("BRN", "brown"),
+            ("FKS", "fox"),
+            ("JMPT", "jumped"),
+            ("OFR", "over"),
+            ("0", "the"),
+            ("LS", "lazy"),
+            ("TKS", "dogs"),
+            ("FX", "PHISH"),
+            ("XT", "SHOT"),
+            ("OTXN", "ODSIAN"),
+            ("PLXN", "PULSION"),
+            ("RX", "RETCH"),
+            ("WX", "WATCH"),
+            ("OX", "OTIA"),
+            ("PRXN", "PORTION"),
+        ] {
+            assert_eq!(metaphone(input, 4), expected, "vector {input}");
+        }
+        // longer code length for CHARACTER (commons uses an explicit
+        // larger maxCodeLen here)
+        assert_eq!(metaphone("CHARACTER", 10), "XRKTR");
     }
 
     #[test]
-    #[ignore = "cologne phonetic output diverges from the expected vector (657 vs 60507); needs reference verification"]
     fn test_cologne() {
         assert_eq!(cologne_phonetic("Mueller"), "657");
         assert_eq!(cologne_phonetic("Müller"), "657");
+    }
+
+    // Vectors from Apache Commons Codec ColognePhoneticTest.
+    #[test]
+    fn test_cologne_commons_vectors() {
+        for (expected, input) in [
+            ("01", "Aabjoe"),
+            ("0856", "Aaclan"),
+            ("04567", "Aychlmajr"),
+            ("0", "a"),
+            ("0", "ä"),
+            ("8", "ß"),
+            ("0", "aa"),
+            ("0", "ha"),
+            ("", "h"),
+            ("0", "aha"),
+            ("1", "b"),
+            ("1", "p"),
+            ("3", "ph"),
+            ("3", "f"),
+            ("3", "v"),
+            ("3", "w"),
+            ("4", "g"),
+            ("4", "k"),
+            ("4", "q"),
+            ("48", "x"),
+            ("048", "ax"),
+            ("48", "cx"),
+            ("5", "l"),
+            ("45", "cl"),
+            ("085", "acl"),
+            ("6", "mn"),
+            ("6", "{mn}"),
+            ("7", "r"),
+            ("657", "mÜller"),
+            ("657", "müller"),
+            ("862", "schmidt"),
+            ("8627", "schneider"),
+            ("387", "fischer"),
+            ("317", "weber"),
+            ("3467", "wagner"),
+            ("147", "becker"),
+            ("036", "hoffmann"),
+            ("837", "schäfer"),
+            ("837", "schÄfer"),
+            ("17863", "Breschnew"),
+            ("3412", "Wikipedia"),
+            ("127", "peter"),
+            ("376", "pharma"),
+            ("64645214", "mönchengladbach"),
+            ("28", "deutsch"),
+            ("28", "deutz"),
+            ("06174", "hamburg"),
+            ("0637", "hannover"),
+            ("478256", "christstollen"),
+            ("48621", "Xanthippe"),
+            ("8478", "Zacharias"),
+            ("0581", "Holzbau"),
+            ("68", "matsch"),
+            ("68", "matz"),
+            ("071862", "Arbeitsamt"),
+            ("0172", "Eberhard"),
+            ("0172", "Eberhardt"),
+            ("858", "Celsius"),
+            ("08", "Ace"),
+            ("84", "shch"),
+            ("484", "xch"),
+            ("021", "heithabu"),
+            ("174845214", "bergisch-gladbach"),
+            ("65752682", "Müller-Lüdenscheidt"),
+        ] {
+            assert_eq!(cologne_phonetic(input), expected, "vector {input}");
+        }
     }
 
     #[test]
