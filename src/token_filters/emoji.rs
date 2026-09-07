@@ -120,34 +120,35 @@ impl Default for EmojiExtractTokenFilter {
 
 impl TokenFilter for EmojiExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
-        if token.term.starts_with("_sentiment:") {
-            return (false, None); // idempotent: never re-tag an emitted tag
-        }
         let text = token.term.as_ref();
-        let emojis: Vec<char> = text.chars().filter(|c| is_emoji(*c)).collect();
-        if emojis.is_empty() {
-            return (false, None);
-        }
+        // Idempotent: a token made up entirely of emoji characters is already
+        // an extraction — emitting copies of it again would duplicate the
+        // token (and self-feed if extras ever re-enter this filter).
+        if !text.chars().all(is_emoji) {
+            let emojis: Vec<char> = text.chars().filter(|c| is_emoji(*c)).collect();
+            if !emojis.is_empty() {
+                let extras: Vec<Token<'a>> = emojis
+                    .iter()
+                    .map(|e| Token {
+                        term: Cow::Owned(String::from(*e)),
+                        start_offset: token.start_offset,
+                        end_offset: token.end_offset,
+                        position: token.position,
+                    })
+                    .collect();
 
-        let extras: Vec<Token<'a>> = emojis
-            .iter()
-            .map(|e| Token {
-                term: Cow::Owned(String::from(*e)),
-                start_offset: token.start_offset,
-                end_offset: token.end_offset,
-                position: token.position,
-            })
-            .collect();
+                if self.remove_from_original {
+                    let filtered: String = text.chars().filter(|c| !is_emoji(*c)).collect();
+                    if filtered.is_empty() {
+                        return (true, Some(extras));
+                    }
+                    token.term = Cow::Owned(filtered);
+                }
 
-        if self.remove_from_original {
-            let filtered: String = text.chars().filter(|c| !is_emoji(*c)).collect();
-            if filtered.is_empty() {
-                return (true, Some(extras));
+                return (false, Some(extras));
             }
-            token.term = Cow::Owned(filtered);
         }
-
-        (false, Some(extras))
+        (false, None)
     }
 }
 
@@ -170,6 +171,9 @@ impl Default for EmojiSentimentTokenFilter {
 
 impl TokenFilter for EmojiSentimentTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_sentiment:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         let mut pos_score: i32 = 0;
         let mut neg_score: i32 = 0;
@@ -361,6 +365,52 @@ fn emoji_to_description(c: char) -> Option<&'static str> {
         0x1F680 => "rocket",
         0x2708 => "airplane",
         0x1F697 => "car",
+        // Food & drink
+        0x1F355 => "pizza",
+        0x1F354 => "hamburger",
+        0x1F35F => "fries",
+        0x1F356 => "meat_on_bone",
+        0x1F357 => "poultry_leg",
+        0x1F349 => "watermelon",
+        0x1F34E => "apple",
+        0x1F34C => "banana",
+        0x1F353 => "strawberry",
+        0x1F36C => "candy",
+        0x1F36B => "chocolate",
+        0x1F366 => "ice_cream",
+        0x1F370 => "cake",
+        0x1F382 => "birthday_cake",
+        0x1F36A => "cookie",
+        0x2615 => "coffee",
+        0x1F375 => "tea",
+        0x1F37A => "beer",
+        0x1F37B => "beers",
+        0x1F377 => "wine_glass",
+        0x1F374 => "cocktail",
+        0x1F36E => "custard",
+        0x1F36D => "lollipop",
+        0x1F344 => "mushroom",
+        // Common activity & object emoji
+        0x26BD => "soccer",
+        0x1F3C0 => "basketball",
+        0x1F3C8 => "american_football",
+        0x26F3 => "golf",
+        0x1F3AF => "dart",
+        0x1F3AE => "video_game",
+        0x1F3B5 => "musical_note",
+        0x1F4BB => "computer",
+        0x1F4F1 => "phone",
+        0x1F4BE => "floppy_disk",
+        0x1F4DA => "books",
+        0x1F4D6 => "open_book",
+        0x270D => "writing_hand",
+        0x1F58D => "crayon",
+        0x1F4DD => "memo",
+        0x1F4C8 => "chart_up",
+        0x1F4C9 => "chart_down",
+        0x1F9E0 => "brain",
+        0x1F52D => "telescope",
+        0x1F52E => "crystal_ball",
         _ => return None,
     })
 }
@@ -388,5 +438,135 @@ fn emoji_sentiment(c: char) -> i32 {
             -1
         }
         _ => 0,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_token(term: &str) -> Token<'_> {
+        Token {
+            term: Cow::Borrowed(term),
+            start_offset: 0,
+            end_offset: term.len() as u32,
+            position: 0,
+        }
+    }
+
+    #[test]
+    fn extract_pure_emoji_token_is_not_duplicated() {
+        let filter = EmojiExtractTokenFilter::new();
+        let mut token = make_token("\u{1F355}");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert!(extras.is_none());
+        assert_eq!(token.term.as_ref(), "\u{1F355}");
+    }
+
+    #[test]
+    fn extract_mixed_token_emits_each_emoji_once() {
+        let filter = EmojiExtractTokenFilter::new();
+        let mut token = make_token("pizza\u{1F355}");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert_eq!(token.term.as_ref(), "pizza\u{1F355}");
+        let extras = extras.expect("one extracted emoji");
+        assert_eq!(extras.len(), 1);
+        assert_eq!(extras[0].term.as_ref(), "\u{1F355}");
+    }
+
+    #[test]
+    fn extract_remove_from_original_strips_emoji() {
+        let filter = EmojiExtractTokenFilter {
+            remove_from_original: true,
+        };
+        let mut token = make_token("pizza\u{1F355}");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert_eq!(token.term.as_ref(), "pizza");
+        assert_eq!(
+            extras.expect("extracted emoji").len(),
+            1,
+            "pure-emoji extraction emitted once"
+        );
+    }
+
+    #[test]
+    fn extract_is_idempotent_when_extras_reenter() {
+        // Simulate the extras re-entering the filter (pipeline re-entry):
+        // filtering an emitted pure-emoji token again must be a no-op, so
+        // repeated application cannot grow the token stream.
+        let filter = EmojiExtractTokenFilter::new();
+        let mut token = make_token("\u{1F355}");
+        for _ in 0..100 {
+            let (deleted, extras) = filter.filter(&mut token);
+            assert!(!deleted);
+            assert!(extras.is_none());
+        }
+        assert_eq!(token.term.as_ref(), "\u{1F355}");
+    }
+
+    #[test]
+    fn to_text_converts_pizza_emoji() {
+        let filter = EmojiToTextTokenFilter {
+            keep_original: false,
+        };
+        let mut token = make_token("\u{1F355}");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert!(extras.is_none());
+        assert_eq!(token.term.as_ref(), "pizza");
+    }
+
+    #[test]
+    fn to_text_keep_original_emits_synonym() {
+        let filter = EmojiToTextTokenFilter { keep_original: true };
+        let mut token = make_token("\u{1F355}");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert_eq!(token.term.as_ref(), "\u{1F355}");
+        let extras = extras.expect("description synonym");
+        assert_eq!(extras.len(), 1);
+        assert_eq!(extras[0].term.as_ref(), "pizza");
+    }
+
+    #[test]
+    fn to_text_leaves_plain_text_untouched() {
+        let filter = EmojiToTextTokenFilter {
+            keep_original: false,
+        };
+        let mut token = make_token("hello");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert!(extras.is_none());
+        assert_eq!(token.term.as_ref(), "hello");
+    }
+
+    #[test]
+    fn sentiment_tag_passes_through_unchanged() {
+        let filter = EmojiSentimentTokenFilter::new();
+        let mut token = make_token("_sentiment:positive");
+        let (deleted, extras) = filter.filter(&mut token);
+        assert!(!deleted);
+        assert!(extras.is_none());
+    }
+
+    #[test]
+    fn sentiment_tags_positive_and_negative() {
+        let filter = EmojiSentimentTokenFilter::new();
+        let mut token = make_token("\u{1F602}");
+        let (_, extras) = filter.filter(&mut token);
+        assert_eq!(
+            extras.expect("sentiment tag")[0].term.as_ref(),
+            "_sentiment:positive"
+        );
+
+        let mut token = make_token("\u{1F621}");
+        let (_, extras) = filter.filter(&mut token);
+        assert_eq!(
+            extras.expect("sentiment tag")[0].term.as_ref(),
+            "_sentiment:negative"
+        );
     }
 }

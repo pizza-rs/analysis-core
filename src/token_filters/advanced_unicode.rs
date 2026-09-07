@@ -260,6 +260,9 @@ impl Default for EmojiPresenceTokenFilter {
 
 impl TokenFilter for EmojiPresenceTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_has_emoji:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         if text.chars().any(|c| is_emoji(c)) {
             let tag = Token {
