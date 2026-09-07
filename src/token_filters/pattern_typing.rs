@@ -35,6 +35,9 @@ impl Default for PatternTypingTokenFilter {
 
 impl TokenFilter for PatternTypingTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_type:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         for (regex, tag) in &self.rules {
             if regex.is_match(token.term.as_ref()) {
                 let type_token = Token {

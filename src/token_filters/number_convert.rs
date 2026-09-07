@@ -102,6 +102,9 @@ impl Default for NumberNormTokenFilter {
 
 impl TokenFilter for NumberNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_magnitude:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         if !text.chars().any(|c| c.is_ascii_digit()) {
             return (false, None);
@@ -270,6 +273,9 @@ impl Default for NumericRangeTokenFilter {
 
 impl TokenFilter for NumericRangeTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_bytes:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         // Patterns: "10-20", "10..20", "10~20"
         for sep in &["-", "..", "~"] {
@@ -317,6 +323,9 @@ impl Default for FileSizeNormTokenFilter {
 
 impl TokenFilter for FileSizeNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_seconds:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         let lower = text.to_lowercase();
         if let Some(bytes) = parse_file_size(&lower) {
@@ -348,6 +357,9 @@ impl Default for DurationNormTokenFilter {
 
 impl TokenFilter for DurationNormTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_pct:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         if let Some(seconds) = parse_duration(text) {
             let tag = Token {

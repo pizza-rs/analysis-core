@@ -25,6 +25,9 @@ impl Default for DelimitedBoostTokenFilter {
 
 impl TokenFilter for DelimitedBoostTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_boost:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         if let Some(pos) = token.term.find(self.delimiter) {
             let text = &token.term.as_ref()[..pos];
             let payload = &token.term.as_ref()[pos + self.delimiter.len_utf8()..];

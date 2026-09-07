@@ -171,6 +171,9 @@ impl Default for SentenceCaseTokenFilter {
 
 impl TokenFilter for SentenceCaseTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_mention:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         if text.is_empty() {
             return (false, None);

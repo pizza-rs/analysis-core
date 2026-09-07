@@ -28,6 +28,9 @@ impl Default for CharCountTokenFilter {
 
 impl TokenFilter for CharCountTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with(self.prefix.as_str()) {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let count = token.term.chars().count();
         let tag = Token {
             term: Cow::Owned(format!("{}{}", self.prefix, count)),
@@ -55,6 +58,9 @@ impl Default for ByteLengthTokenFilter {
 
 impl TokenFilter for ByteLengthTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_bytes:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let len = token.term.len();
         let tag = Token {
             term: Cow::Owned(format!("_bytes:{}", len)),
@@ -88,6 +94,9 @@ impl Default for LengthBandTokenFilter {
 
 impl TokenFilter for LengthBandTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_length_band:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let len = token.term.chars().count();
         let band = if len <= self.short_max {
             "short"
@@ -122,6 +131,9 @@ impl Default for SyllableCountTokenFilter {
 
 impl TokenFilter for SyllableCountTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_syllables:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let syllables = count_syllables(token.term.as_ref());
         let tag = Token {
             term: Cow::Owned(format!("_syllables:{}", syllables)),
@@ -150,6 +162,9 @@ impl Default for EntropyTokenFilter {
 
 impl TokenFilter for EntropyTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_entropy:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let entropy = shannon_entropy(token.term.as_ref());
         let category = if entropy < 2.0 {
             "low"
@@ -184,6 +199,9 @@ impl Default for ScriptTagTokenFilter {
 
 impl TokenFilter for ScriptTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_script:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let script = detect_script_name(token.term.as_ref());
         let tag = Token {
             term: Cow::Owned(format!("_script:{}", script)),
@@ -211,6 +229,9 @@ impl Default for LanguageTagTokenFilter {
 
 impl TokenFilter for LanguageTagTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_lang:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let lang = detect_language_heuristic(token.term.as_ref());
         let tag = Token {
             term: Cow::Owned(format!("_lang:{}", lang)),

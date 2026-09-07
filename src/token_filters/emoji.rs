@@ -120,6 +120,9 @@ impl Default for EmojiExtractTokenFilter {
 
 impl TokenFilter for EmojiExtractTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
+        if token.term.starts_with("_sentiment:") {
+            return (false, None); // idempotent: never re-tag an emitted tag
+        }
         let text = token.term.as_ref();
         let emojis: Vec<char> = text.chars().filter(|c| is_emoji(*c)).collect();
         if emojis.is_empty() {
