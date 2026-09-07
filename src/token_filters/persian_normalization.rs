@@ -4,22 +4,41 @@ use alloc::vec::Vec;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
 
-/// Normalizes Persian text. Equivalent to Lucene's `PersianNormalizationFilter`.
+/// Normalizes Persian text — Lucene's `PersianNormalizationFilter` as the
+/// compatibility baseline, extended by pizza.
 ///
-/// Rules (matching `PersianNormalizer` exactly):
+/// Baseline (matching `PersianNormalizer` exactly):
 /// - FARSI_YEH (U+06CC), YEH_BARREE (U+06D2) → YEH (U+064A)
 /// - HEH_YEH (U+06C0), HEH_GOAL (U+06C1) → HEH (U+0647)
 /// - KEHEH (U+06A9) → KAF (U+0643)
 /// - HAMZA_ABOVE (U+0654) is deleted (necessary for HEH + HAMZA)
 ///
-/// Diacritics (fatha, damma, …) are deliberately NOT removed: Lucene's
-/// normalizer leaves them untouched.
+/// Pizza extension (default): TATWEEL (U+0640) and the optional diacritics
+/// (U+064B..U+0652) are also stripped. Queries are almost never typed with
+/// these marks while documents often carry them, so folding them
+/// consistently on the index and query sides improves recall at no
+/// meaningful precision cost — the same convention ES applies to the Arabic
+/// analyzer. Use [`PersianNormalizationTokenFilter::lucene_strict`] for
+/// exact Lucene behavior.
 #[derive(Clone, Debug, Default)]
-pub struct PersianNormalizationTokenFilter;
+pub struct PersianNormalizationTokenFilter {
+    lucene_strict: bool,
+}
 
 impl PersianNormalizationTokenFilter {
+    /// Extended normalizer (Lucene baseline + diacritics/tatweel folding).
     pub fn new() -> Self {
-        Self
+        Self {
+            lucene_strict: false,
+        }
+    }
+
+    /// Exact Lucene `PersianNormalizer` behavior: diacritics and tatweel
+    /// are kept untouched.
+    pub fn lucene_strict() -> Self {
+        Self {
+            lucene_strict: true,
+        }
     }
 }
 
@@ -52,6 +71,10 @@ impl TokenFilter for PersianNormalizationTokenFilter {
                 }
                 // Hamza above is removed (heh + hamza → heh)
                 '\u{0654}' => {
+                    changed = true;
+                }
+                // Pizza extension: strip tatweel and optional diacritics.
+                '\u{0640}' | '\u{064B}'..='\u{0652}' if !self.lucene_strict => {
                     changed = true;
                 }
                 _ => {
@@ -95,10 +118,10 @@ mod tests {
         assert_eq!(token.term, "\u{0643}");
     }
 
-    // Vectors from Lucene's TestPersianNormalizationFilter.
+    // Vectors from Lucene's TestPersianNormalizationFilter (strict mode).
     #[test]
     fn test_lucene_vectors() {
-        let f = PersianNormalizationTokenFilter::new();
+        let f = PersianNormalizationTokenFilter::lucene_strict();
         // farsi yeh → arabic yeh
         let mut token = Token::new("های", 0, 6, 0);
         f.filter(&mut token);
@@ -123,14 +146,31 @@ mod tests {
         let mut token = Token::new("زادہ", 0, 6, 0);
         f.filter(&mut token);
         assert_eq!(token.term, "زاده");
-    }
-
-    #[test]
-    fn test_diacritics_kept() {
-        let f = PersianNormalizationTokenFilter::new();
-        // Lucene leaves diacritics (fatha here) untouched.
+        // strict mode keeps diacritics and tatweel
         let mut token = Token::new("بَ", 0, 4, 0);
         f.filter(&mut token);
         assert_eq!(token.term, "بَ");
+    }
+
+    // The pizza extension folds diacritics and tatweel for recall.
+    #[test]
+    fn test_extended_diacritics_folding() {
+        let f = PersianNormalizationTokenFilter::new();
+        // fatha on beh is stripped
+        let mut token = Token::new("بَ", 0, 4, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "ب");
+        // tatweel (kashida) is stripped
+        let mut token = Token::new("كت\u{0640}اب", 0, 8, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "كتاب");
+        // sukun/shadda likewise
+        let mut token = Token::new("\u{0651}\u{0652}", 0, 4, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "");
+        // baseline mappings still apply alongside the extension
+        let mut token = Token::new("های", 0, 6, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "هاي");
     }
 }

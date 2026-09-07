@@ -5,20 +5,19 @@ use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
 
 /// Normalizes the Unicode representation of text in Indian languages —
-/// faithful port of Lucene's `IndicNormalizer`.
+/// Lucene's `IndicNormalizer` as the compatibility baseline, extended by
+/// pizza.
 ///
-/// Follows guidelines from Unicode 5.2, chapter 6, South Asian Scripts I and
-/// graphical decompositions from
-/// <http://ldc.upenn.edu/myl/IndianScriptsUnicode.html>. The normalizer
-/// *composes* decomposed sequences (e.g. `अ` + `ा` → `आ`, consonant + nukta →
-/// precomposed nukta form, Bengali `ত` + virama + ZWJ → khanda-ta `ৎ`) into
-/// their standard precomposed forms across nine scripts: Devanagari, Bengali,
-/// Gurmukhi, Gujarati, Oriya, Tamil, Telugu, Kannada and Malayalam.
+/// The Lucene baseline *composes* decomposed sequences (e.g. `अ` + `ा` →
+/// `आ`, consonant + nukta → precomposed nukta form, Bengali `ত` + virama +
+/// ZWJ → khanda-ta `ৎ`) into their standard precomposed forms across nine
+/// scripts: Devanagari, Bengali, Gurmukhi, Gujarati, Oriya, Tamil, Telugu,
+/// Kannada and Malayalam.
 ///
-/// Unlike the previous approximation, zero-width joiners are NOT stripped
-/// unconditionally: a ZWJ is only consumed as the third element of a
-/// three-character composition (khanda-ta / Malayalam chillu), exactly as in
-/// Lucene.
+/// Pizza extension (default): after composition, leftover zero-width
+/// joiners/non-joiners that no rule consumed are stripped — conjunct
+/// rendering varies between documents and queries, and removing the
+/// invisible joiners on both sides improves matching.
 #[derive(Clone, Debug, Default)]
 pub struct IndicNormalizationTokenFilter;
 
@@ -216,13 +215,23 @@ fn script_base(c: char) -> Option<(u32, u16)> {
 impl TokenFilter for IndicNormalizationTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if !text.chars().any(|c| script_base(c).is_some()) {
+        if !text
+            .chars()
+            .any(|c| script_base(c).is_some() || c == '\u{200C}' || c == '\u{200D}')
+        {
             return (false, None);
         }
 
         let mut chars: Vec<char> = text.chars().collect();
         let len = normalize(&mut chars);
-        let result: String = chars[..len].iter().collect();
+        chars.truncate(len);
+        // Pizza extension on top of the Lucene composition pass: strip
+        // zero-width joiners/non-joiners that no composition consumed.
+        // Conjunct rendering differs between documents and queries, so
+        // removing the invisible joiners consistently on both sides
+        // improves matching. (Lucene leaves them in the term.)
+        chars.retain(|&c| c != '\u{200C}' && c != '\u{200D}');
+        let result: String = chars.iter().collect();
         if result == text {
             return (false, None);
         }
@@ -374,13 +383,17 @@ mod tests {
     }
 
     #[test]
-    fn test_zwj_kept_outside_composition() {
+    fn test_zwj_stripped_outside_composition() {
         let filter = IndicNormalizationTokenFilter::new();
-        // Lucene only consumes ZWJ inside khanda-ta/chillu compositions;
-        // elsewhere it stays in the term.
+        // Pizza extension: ZWJ not consumed by a composition (khanda-ta,
+        // chillu) is stripped for matching robustness; Lucene would keep it.
         let mut token = make_token("क\u{200D}ष");
         filter.filter(&mut token);
-        assert_eq!(token.term.as_ref(), "क\u{200D}ष");
+        assert_eq!(token.term.as_ref(), "कष");
+        // ZWNJ likewise
+        let mut token = make_token("क\u{200C}ष");
+        filter.filter(&mut token);
+        assert_eq!(token.term.as_ref(), "कष");
     }
 
     #[test]

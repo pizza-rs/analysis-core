@@ -4,17 +4,22 @@ use alloc::vec::Vec;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
 
-/// Brazilian Portuguese stemmer — faithful port of Lucene's
-/// `org.apache.lucene.analysis.br.BrazilianStemmer`.
+/// Brazilian Portuguese stemmer — port of Lucene's
+/// `org.apache.lucene.analysis.br.BrazilianStemmer` with two upstream bugs
+/// fixed (see below).
 ///
 /// This is distinct from the Snowball Portuguese stemmer: it computes R1/R2/RV
 /// regions over an accent-folded term and applies a five-step suffix cascade
 /// (standard suffixes, verb suffixes in RV, residual `i`, residual vowels,
-/// final `e`/`gu`/`ci` cleanup). Two upstream quirks are preserved on
-/// purpose because the reference tests depend on the exact behavior:
-/// the `logias` branch discards its replacement (the Java source never
-/// assigns the result back), and the `ira` verb branch removes `ava`
-/// instead of `ira` (a no-op unless the term happens to end in `ava`).
+/// final `e`/`gu`/`ci` cleanup).
+///
+/// Deliberate divergences from the Java source (both linguistically wrong
+/// there, and neither is exercised by Lucene's official test vectors):
+/// - the `logias` branch applies its `→ log` replacement; upstream discards
+///   the value (a missing assignment), leaving e.g. `entomologias` unstemmed;
+/// - the `ira` verb branch removes `ira` as its later duplicate entry
+///   intends; upstream removes `ava` there (a copy-paste bug that makes the
+///   rule a silent no-op).
 #[derive(Clone, Debug, Default)]
 pub struct BrazilianStemTokenFilter;
 
@@ -141,9 +146,9 @@ impl BrazilianStemmer {
             return true;
         }
         if ct.ends_with("logias") && opt_ends(r2, "logias") {
-            // Upstream bug preserved: the replacement's return value is
-            // discarded, so CT stays unchanged even though the step reports
-            // success.
+            // Upstream bug fixed: the Java source computes the replacement
+            // but never assigns it back, leaving the term unchanged.
+            self.ct = replace_suffix(&ct, "logias", "log");
             return true;
         }
         if ct.ends_with("encias") && opt_ends(r2, "encias") {
@@ -332,23 +337,14 @@ impl BrazilianStemmer {
             return false;
         };
         // Group order mirrors the Java length blocks: 7, 6, 5, 4, 3, 2.
-        for (group_idx, group) in [GROUP7, GROUP6, GROUP5, GROUP4, GROUP3, GROUP2]
-            .iter()
-            .copied()
-            .enumerate()
-        {
+        for group in [GROUP7, GROUP6, GROUP5, GROUP4, GROUP3, GROUP2] {
             for suffix in group {
                 if rv.ends_with(suffix) {
-                    // Upstream quirk preserved: the first `ira` entry in the
-                    // 3-suffix group removes `ava` instead of `ira` (making
-                    // the later duplicate `ira` entry unreachable, as in the
-                    // Java source).
-                    let to_remove = if group_idx == 4 && *suffix == "ira" {
-                        "ava"
-                    } else {
-                        suffix
-                    };
-                    self.ct = remove_suffix(&self.ct, to_remove);
+                    // The duplicate `ira` entry in the 3-suffix group is
+                    // dead code in Java: the first one fires but removes
+                    // `ava` (copy-paste bug), a no-op. We remove `ira` as
+                    // the rule intends.
+                    self.ct = remove_suffix(&self.ct, suffix);
                     return true;
                 }
             }
@@ -616,6 +612,19 @@ mod tests {
         // Token too short: diacritics are NOT removed.
         assert_eq!(stem("áá"), "áá");
         assert_eq!(stem("ááá"), "aaa");
+    }
+
+    // Regression vectors for the two upstream bugs we fixed.
+    #[test]
+    fn test_upstream_bug_fixes() {
+        // upstream discards the logias→log replacement; we apply it
+        assert_eq!(stem("entomologias"), "entomolog");
+        assert_eq!(stem("entomologia"), "entomolog");
+        // upstream's ira verb rule removes "ava" (no-op, term left as-is);
+        // we remove "ira" as the rule intends
+        assert_eq!(stem("suspira"), "susp");
+        // regular residual path, unaffected by the fix
+        assert_eq!(stem("saira"), "sair");
     }
 
     #[test]

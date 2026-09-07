@@ -1579,10 +1579,11 @@ mod persian_normalization {
     use super::*;
 
     // Lucene's PersianNormalizer maps Farsi forms to their Arabic
-    // equivalents. Vectors from TestPersianNormalizationFilter.
+    // equivalents. Vectors from TestPersianNormalizationFilter (strict
+    // mode: our default additionally folds diacritics/tatweel).
     #[test]
     fn test_yeh_normalization() {
-        let f = PersianNormalizationTokenFilter::new();
+        let f = PersianNormalizationTokenFilter::lucene_strict();
         // Farsi yeh → Arabic yeh
         check_filter(&f, "های", "هاي");
         // Yeh barree → Arabic yeh
@@ -1591,7 +1592,7 @@ mod persian_normalization {
 
     #[test]
     fn test_keh_normalization() {
-        let f = PersianNormalizationTokenFilter::new();
+        let f = PersianNormalizationTokenFilter::lucene_strict();
         // Keheh → Arabic kaf
         check_filter(&f, "کشاندن", "كشاندن");
         // Heh+yeh → heh; heh+hamza above → heh (hamza deleted);
