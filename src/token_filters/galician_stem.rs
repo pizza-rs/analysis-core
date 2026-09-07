@@ -4,9 +4,12 @@ use alloc::vec::Vec;
 use pizza_engine::analysis::Token;
 use pizza_engine::analysis::TokenFilter;
 
-/// Galician stemmer based on the Lucene GalicianStemmer.
-///
-/// Removes common Galician suffixes (plural, gender, derivational).
+/// Galician stemmer — faithful port of Lucene's `GalicianStemmer`, which
+/// implements "Regras do lematizador para o galego" (RSLP-G) as a table of
+/// seven suffix-stripping steps: Plural, Unification, Adverb, Augmentative
+/// (applied to a fixpoint), Noun, Verb (only when Noun did not fire) and
+/// Vowel, followed by an unconditional accent fold. Validated against the
+/// full Lucene reference vocabulary (9416 terms, `tests/data/galician_stem.txt`).
 #[derive(Clone, Debug, Default)]
 pub struct GalicianStemTokenFilter;
 
@@ -19,11 +22,8 @@ impl GalicianStemTokenFilter {
 impl TokenFilter for GalicianStemTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if text.len() < 4 {
-            return (false, None);
-        }
-
-        let stemmed = stem_galician(text);
+        // Lucene's GalicianAnalyzer lowercases ahead of the stemmer.
+        let stemmed = stem_galician(&text.to_lowercase());
         if stemmed != text {
             token.term = Cow::Owned(stemmed);
         }
@@ -31,9 +31,106 @@ impl TokenFilter for GalicianStemTokenFilter {
     }
 }
 
-/// Galician minimal stemmer — only handles plurals.
-///
-/// A lighter variant that only removes plural suffixes.
+/// A single RSLP rule: strip `suffix` (leaving at least `min` stem
+/// characters) and append `replacement`, unless an exception matches.
+struct RslpRule {
+    suffix: &'static str,
+    min: usize,
+    replacement: &'static str,
+    exceptions: &'static [&'static str],
+}
+
+/// An ordered list of rules plus gating metadata, mirroring
+/// `RSLPStemmerBase.Step`. `whole_word_exceptions` selects whole-word
+/// exception matching (the step's "B" flag); otherwise exceptions are
+/// suffixes. A `min` of 0 in the source file is precomputed to the smallest
+/// `rule.min + suffix.len()` here.
+struct RslpStep {
+    min: usize,
+    whole_word_exceptions: bool,
+    conds: &'static [&'static str],
+    rules: &'static [RslpRule],
+}
+
+impl RslpStep {
+    /// Apply the first matching rule; returns whether anything fired.
+    fn apply(&self, s: &mut Vec<char>) -> bool {
+        let len = s.len();
+        if len < self.min {
+            return false;
+        }
+        if !self.conds.is_empty() && !self.conds.iter().any(|c| ends_with(s, c)) {
+            return false;
+        }
+        for rule in self.rules {
+            let suffix: Vec<char> = rule.suffix.chars().collect();
+            if suffix.len() > len
+                || len - suffix.len() < rule.min
+                || s[len - suffix.len()..] != suffix[..]
+            {
+                continue;
+            }
+            let blocked = if self.whole_word_exceptions {
+                rule.exceptions
+                    .iter()
+                    .any(|e| e.chars().count() == len && ends_with(s, e))
+            } else {
+                rule.exceptions.iter().any(|e| ends_with(s, e))
+            };
+            if blocked {
+                continue;
+            }
+            let stem_len = len - suffix.len();
+            let replacement: Vec<char> = rule.replacement.chars().collect();
+            s.truncate(stem_len);
+            s.extend(replacement);
+            return true;
+        }
+        false
+    }
+}
+
+fn ends_with(s: &[char], suffix: &str) -> bool {
+    let suffix: Vec<char> = suffix.chars().collect();
+    suffix.len() <= s.len() && s[s.len() - suffix.len()..] == suffix[..]
+}
+
+/// Port of `GalicianStemmer.stem` (the analyzer lowercases beforehand).
+pub(crate) fn stem_galician(word: &str) -> String {
+    let mut s: Vec<char> = word.chars().collect();
+
+    PLURAL.apply(&mut s);
+    UNIFICATION.apply(&mut s);
+    ADVERB.apply(&mut s);
+
+    // augmentative step runs until it stops changing the term
+    while AUGMENTATIVE.apply(&mut s) {}
+
+    // verb suffixes only when the noun step did not fire
+    if !NOUN.apply(&mut s) {
+        VERB.apply(&mut s);
+    }
+
+    VOWEL.apply(&mut s);
+
+    // RSLG accent removal
+    for c in s.iter_mut() {
+        *c = match *c {
+            'á' => 'a',
+            'é' | 'ê' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            other => other,
+        };
+    }
+
+    s.into_iter().collect()
+}
+
+/// Galician minimal stemmer — faithful port of Lucene's
+/// `GalicianMinimalStemmer` (RSLP-S): only the Plural reduction step of the
+/// RSLP table, with no accent folding.
 #[derive(Clone, Debug, Default)]
 pub struct GalicianMinimalStemTokenFilter;
 
@@ -46,11 +143,10 @@ impl GalicianMinimalStemTokenFilter {
 impl TokenFilter for GalicianMinimalStemTokenFilter {
     fn filter<'a>(&self, token: &mut Token<'a>) -> (bool, Option<Vec<Token<'a>>>) {
         let text = token.term.as_ref();
-        if text.len() < 4 {
-            return (false, None);
-        }
-
-        let stemmed = stem_galician_plural(text);
+        // Lucene's GalicianAnalyzer lowercases ahead of the stemmer.
+        let mut s: Vec<char> = text.to_lowercase().chars().collect();
+        PLURAL.apply(&mut s);
+        let stemmed: String = s.into_iter().collect();
         if stemmed != text {
             token.term = Cow::Owned(stemmed);
         }
@@ -58,150 +154,3248 @@ impl TokenFilter for GalicianMinimalStemTokenFilter {
     }
 }
 
-fn stem_galician_plural(word: &str) -> String {
-    let lower = word.to_lowercase();
-    let len = lower.len();
+// Generated from Lucene's galician.rslp — do not edit by hand.
 
-    if len < 4 {
-        return lower;
-    }
+// Rule fields: (suffix, min_stem, replacement, exceptions).
 
-    // -ns -> -n
-    if lower.ends_with("ns") && len > 3 {
-        return lower[..len - 1].to_string();
-    }
+const PLURAL_RULES: &[RslpRule] = &[
+    RslpRule {
+        suffix: "ns",
+        min: 1,
+        replacement: "n",
+        exceptions: &["luns", "furatapóns", "furatapons"],
+    },
+    RslpRule {
+        suffix: "ós",
+        min: 3,
+        replacement: "ón",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ões",
+        min: 3,
+        replacement: "ón",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ães",
+        min: 1,
+        replacement: "ão",
+        exceptions: &["mães", "magalhães"],
+    },
+    RslpRule {
+        suffix: "ais",
+        min: 2,
+        replacement: "al",
+        exceptions: &["cais", "tais", "mais", "pais", "ademais"],
+    },
+    RslpRule {
+        suffix: "áis",
+        min: 2,
+        replacement: "al",
+        exceptions: &["cáis", "táis", "máis", "páis", "ademáis"],
+    },
+    RslpRule {
+        suffix: "éis",
+        min: 2,
+        replacement: "el",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eis",
+        min: 2,
+        replacement: "el",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "óis",
+        min: 2,
+        replacement: "ol",
+        exceptions: &["escornabóis"],
+    },
+    RslpRule {
+        suffix: "ois",
+        min: 2,
+        replacement: "ol",
+        exceptions: &["escornabois"],
+    },
+    RslpRule {
+        suffix: "ís",
+        min: 2,
+        replacement: "il",
+        exceptions: &["país"],
+    },
+    RslpRule {
+        suffix: "is",
+        min: 2,
+        replacement: "il",
+        exceptions: &["menfis", "pais", "kinguis"],
+    },
+    RslpRule {
+        suffix: "les",
+        min: 2,
+        replacement: "l",
+        exceptions: &[
+            "ingles",
+            "marselles",
+            "montreales",
+            "senegales",
+            "manizales",
+            "móstoles",
+            "nápoles",
+        ],
+    },
+    RslpRule {
+        suffix: "res",
+        min: 3,
+        replacement: "r",
+        exceptions: &[
+            "petres",
+            "henares",
+            "cáceres",
+            "baleares",
+            "linares",
+            "londres",
+            "mieres",
+            "miraflores",
+            "mércores",
+            "venres",
+            "pires",
+        ],
+    },
+    RslpRule {
+        suffix: "ces",
+        min: 2,
+        replacement: "z",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "zes",
+        min: 2,
+        replacement: "z",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ises",
+        min: 3,
+        replacement: "z",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ás",
+        min: 1,
+        replacement: "al",
+        exceptions: &["más"],
+    },
+    RslpRule {
+        suffix: "ses",
+        min: 2,
+        replacement: "s",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "s",
+        min: 2,
+        replacement: "",
+        exceptions: &[
+            "barbadés",
+            "barcelonés",
+            "cantonés",
+            "gabonés",
+            "llanés",
+            "medinés",
+            "escocés",
+            "escocês",
+            "francês",
+            "barcelonês",
+            "cantonês",
+            "macramés",
+            "reves",
+            "barcelones",
+            "cantones",
+            "gabones",
+            "llanes",
+            "magallanes",
+            "medines",
+            "escoces",
+            "frances",
+            "xoves",
+            "martes",
+            "aliás",
+            "pires",
+            "lápis",
+            "cais",
+            "mais",
+            "mas",
+            "menos",
+            "férias",
+            "pêsames",
+            "crúcis",
+            "país",
+            "cangas",
+            "atenas",
+            "asturias",
+            "canarias",
+            "filipinas",
+            "honduras",
+            "molucas",
+            "caldas",
+            "mascareñas",
+            "micenas",
+            "covarrubias",
+            "psoas",
+            "óculos",
+            "nupcias",
+            "xoves",
+            "martes",
+            "llanes",
+        ],
+    },
+];
+const PLURAL: RslpStep = RslpStep {
+    min: 3,
+    whole_word_exceptions: true,
+    conds: &["s"],
+    rules: PLURAL_RULES,
+};
 
-    // -ões -> -ón
-    if lower.ends_with("ões") && len > 4 {
-        let mut result = lower[..len - "ões".len()].to_string();
-        result.push_str("ón");
-        return result;
-    }
+const UNIFICATION_RULES: &[RslpRule] = &[
+    RslpRule {
+        suffix: "íssimo",
+        min: 5,
+        replacement: "ísimo",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "íssima",
+        min: 5,
+        replacement: "ísima",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aço",
+        min: 4,
+        replacement: "azo",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aça",
+        min: 4,
+        replacement: "aza",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "uça",
+        min: 4,
+        replacement: "uza",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "lhar",
+        min: 2,
+        replacement: "llar",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "lher",
+        min: 2,
+        replacement: "ller",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "lhor",
+        min: 2,
+        replacement: "llor",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "lho",
+        min: 1,
+        replacement: "llo",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "nhar",
+        min: 2,
+        replacement: "ñar",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "nhor",
+        min: 2,
+        replacement: "ñor",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "nho",
+        min: 1,
+        replacement: "ño",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "nha",
+        min: 1,
+        replacement: "ña",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ário",
+        min: 3,
+        replacement: "ario",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ária",
+        min: 3,
+        replacement: "aria",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "able",
+        min: 2,
+        replacement: "ábel",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ável",
+        min: 2,
+        replacement: "ábel",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ible",
+        min: 2,
+        replacement: "íbel",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ível",
+        min: 2,
+        replacement: "íbel",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "çom",
+        min: 2,
+        replacement: "ción",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "agem",
+        min: 2,
+        replacement: "axe",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "age",
+        min: 2,
+        replacement: "axe",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ão",
+        min: 3,
+        replacement: "ón",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ao",
+        min: 1,
+        replacement: "án",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "au",
+        min: 1,
+        replacement: "án",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "om",
+        min: 3,
+        replacement: "ón",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "m",
+        min: 2,
+        replacement: "n",
+        exceptions: &[],
+    },
+];
+const UNIFICATION: RslpStep = RslpStep {
+    min: 3,
+    whole_word_exceptions: false,
+    conds: &[],
+    rules: UNIFICATION_RULES,
+};
 
-    // -ais -> -al
-    if lower.ends_with("ais") && len > 4 {
-        let mut result = lower[..len - 2].to_string();
-        result.push('l');
-        return result;
-    }
+const ADVERB_RULES: &[RslpRule] = &[RslpRule {
+    suffix: "mente",
+    min: 4,
+    replacement: "",
+    exceptions: &["experimente", "vehemente", "sedimente"],
+}];
+const ADVERB: RslpStep = RslpStep {
+    min: 9,
+    whole_word_exceptions: false,
+    conds: &[],
+    rules: ADVERB_RULES,
+};
 
-    // -éis -> -el
-    if lower.ends_with("éis") && len > 4 {
-        let mut result = lower[..len - "éis".len()].to_string();
-        result.push_str("el");
-        return result;
-    }
+const AUGMENTATIVE_RULES: &[RslpRule] = &[
+    RslpRule {
+        suffix: "dísimo",
+        min: 5,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "dísima",
+        min: 5,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "bilísimo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "bilísima",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ísimo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ísima",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ésimo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ésima",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "érrimo",
+        min: 4,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "érrima",
+        min: 4,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ana",
+        min: 2,
+        replacement: "",
+        exceptions: &[
+            "argana",
+            "banana",
+            "choupana",
+            "espadana",
+            "faciana",
+            "iguana",
+            "lantana",
+            "macana",
+            "membrana",
+            "mesana",
+            "nirvana",
+            "obsidiana",
+            "palangana",
+            "pavana",
+            "persiana",
+            "pestana",
+            "porcelana",
+            "pseudomembrana",
+            "roldana",
+            "sábana",
+            "salangana",
+            "saragana",
+            "ventana",
+        ],
+    },
+    RslpRule {
+        suffix: "án",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "ademán",
+            "bardán",
+            "barregán",
+            "corricán",
+            "curricán",
+            "faisán",
+            "furacán",
+            "fustán",
+            "gabán",
+            "gabián",
+            "galán",
+            "gañán",
+            "lavacán",
+            "mazán",
+            "mourán",
+            "rabadán",
+            "serán",
+            "serrán",
+            "tabán",
+            "titán",
+            "tobogán",
+            "verán",
+            "volcán",
+            "volován",
+        ],
+    },
+    RslpRule {
+        suffix: "azo",
+        min: 4,
+        replacement: "",
+        exceptions: &[
+            "abrazo",
+            "espazo",
+            "andazo",
+            "bagazo",
+            "balazo",
+            "bandazo",
+            "cachazo",
+            "carazo",
+            "denazo",
+            "engazo",
+            "famazo",
+            "lampreazo",
+            "pantocazo",
+            "pedazo",
+            "preñazo",
+            "regazo",
+            "ribazo",
+            "sobrazo",
+            "terrazo",
+            "trompazo",
+        ],
+    },
+    RslpRule {
+        suffix: "aza",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alcarraza",
+            "ameaza",
+            "baraza",
+            "broucaza",
+            "burgaza",
+            "cabaza",
+            "cachaza",
+            "calaza",
+            "carpaza",
+            "carraza",
+            "coiraza",
+            "colmaza",
+            "fogaza",
+            "famaza",
+            "labaza",
+            "liñaza",
+            "melaza",
+            "mordaza",
+            "paraza",
+            "pinaza",
+            "rabaza",
+            "rapaza",
+            "trancaza",
+        ],
+    },
+    RslpRule {
+        suffix: "allo",
+        min: 4,
+        replacement: "",
+        exceptions: &["traballo"],
+    },
+    RslpRule {
+        suffix: "alla",
+        min: 4,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "arra",
+        min: 3,
+        replacement: "",
+        exceptions: &["cigarra", "cinzarra"],
+    },
+    RslpRule {
+        suffix: "astro",
+        min: 3,
+        replacement: "",
+        exceptions: &["balastro", "bimbastro", "canastro", "retropilastro"],
+    },
+    RslpRule {
+        suffix: "astra",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "banastra",
+            "canastra",
+            "contrapilastra",
+            "piastra",
+            "pilastra",
+        ],
+    },
+    RslpRule {
+        suffix: "ázio",
+        min: 3,
+        replacement: "",
+        exceptions: &["topázio"],
+    },
+    RslpRule {
+        suffix: "elo",
+        min: 4,
+        replacement: "",
+        exceptions: &[
+            "bacelo",
+            "barrelo",
+            "bicarelo",
+            "biquelo",
+            "boquelo",
+            "botelo",
+            "bouquelo",
+            "cacarelo",
+            "cachelo",
+            "cadrelo",
+            "campelo",
+            "candelo",
+            "cantelo",
+            "carabelo",
+            "carambelo",
+            "caramelo",
+            "cercelo",
+            "cerebelo",
+            "chocarelo",
+            "coitelo",
+            "conchelo",
+            "corbelo",
+            "cotobelo",
+            "couselo",
+            "destelo",
+            "desvelo",
+            "esfácelo",
+            "fandelo",
+            "fardelo",
+            "farelo",
+            "farnelo",
+            "flabelo",
+            "ganchelo",
+            "garfelo",
+            "involucelo",
+            "mantelo",
+            "montelo",
+            "outerelo",
+            "padicelo",
+            "pesadelo",
+            "pinguelo",
+            "piquelo",
+            "rampelo",
+            "rastrelo",
+            "restelo",
+            "tornecelo",
+            "trabelo",
+            "restrelo",
+            "portelo",
+            "ourelo",
+            "zarapelo",
+        ],
+    },
+    RslpRule {
+        suffix: "eta",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "arqueta",
+            "atleta",
+            "avoceta",
+            "baioneta",
+            "baldeta",
+            "banqueta",
+            "barraganeta",
+            "barreta",
+            "borleta",
+            "buceta",
+            "caceta",
+            "calceta",
+            "caldeta",
+            "cambeta",
+            "canaleta",
+            "caneta",
+            "carreta",
+            "cerceta",
+            "chaparreta",
+            "chapeta",
+            "chareta",
+            "chincheta",
+            "colcheta",
+            "cometa",
+            "corbeta",
+            "corveta",
+            "cuneta",
+            "desteta",
+            "espeta",
+            "espoleta",
+            "estafeta",
+            "esteta",
+            "faceta",
+            "falanxeta",
+            "frasqueta",
+            "gaceta",
+            "gabeta",
+            "galleta",
+            "garabeta",
+            "gaveta",
+            "glorieta",
+            "lagareta",
+            "lambeta",
+            "lanceta",
+            "libreta",
+            "maceta",
+            "macheta",
+            "maleta",
+            "malleta",
+            "mareta",
+            "marreta",
+            "meseta",
+            "mofeta",
+            "muleta",
+            "peseta",
+            "planeta",
+            "raqueta",
+            "regreta",
+            "saqueta",
+            "veleta",
+            "vendeta",
+            "viñeta",
+        ],
+    },
+    RslpRule {
+        suffix: "ete",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alfinete",
+            "ariete",
+            "bacinete",
+            "banquete",
+            "barallete",
+            "barrete",
+            "billete",
+            "binguelete",
+            "birrete",
+            "bonete",
+            "bosquete",
+            "bufete",
+            "burlete",
+            "cabalete",
+            "cacahuete",
+            "cavinete",
+            "capacete",
+            "carrete",
+            "casarete",
+            "casete",
+            "chupete",
+            "clarinete",
+            "colchete",
+            "colete",
+            "capete",
+            "curupete",
+            "disquete",
+            "estilete",
+            "falsete",
+            "ferrete",
+            "filete",
+            "gallardete",
+            "gobelete",
+            "inglete",
+            "machete",
+            "miquelete",
+            "molete",
+            "mosquete",
+            "piquete",
+            "ribete",
+            "rodete",
+            "rolete",
+            "roquete",
+            "sorvete",
+            "vedete",
+            "vendete",
+        ],
+    },
+    RslpRule {
+        suffix: "ica",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "andarica",
+            "botánica",
+            "botica",
+            "dialéctica",
+            "dinámica",
+            "física",
+            "formica",
+            "gráfica",
+            "marica",
+            "túnica",
+        ],
+    },
+    RslpRule {
+        suffix: "ico",
+        min: 3,
+        replacement: "",
+        exceptions: &["conico", "acetifico", "acidifico"],
+    },
+    RslpRule {
+        suffix: "exo",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "arpexo",
+            "arquexo",
+            "asexo",
+            "axexo",
+            "azulexo",
+            "badexo",
+            "bafexo",
+            "bocexo",
+            "bosquexo",
+            "boubexo",
+            "cacarexo",
+            "carrexo",
+            "cascarexo",
+            "castrexo",
+            "convexo",
+            "cotexo",
+            "desexo",
+            "despexo",
+            "forcexo",
+            "gabexo",
+            "gargarexo",
+            "gorgolexo",
+            "inconexo",
+            "manexo",
+            "merexo",
+            "narnexo",
+            "padexo",
+            "patexo",
+            "sopexo",
+            "varexo",
+        ],
+    },
+    RslpRule {
+        suffix: "exa",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "airexa", "bandexa", "carrexa", "envexa", "igrexa", "larexa", "patexa", "presexa",
+            "sobexa",
+        ],
+    },
+    RslpRule {
+        suffix: "idão",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iño",
+        min: 3,
+        replacement: "o",
+        exceptions: &[
+            "camiño", "cariño", "comiño", "golfiño", "padriño", "sobriño", "viciño", "veciño",
+        ],
+    },
+    RslpRule {
+        suffix: "iña",
+        min: 3,
+        replacement: "a",
+        exceptions: &[
+            "camariña",
+            "campiña",
+            "entreliña",
+            "espiña",
+            "fariña",
+            "moriña",
+            "valiña",
+        ],
+    },
+    RslpRule {
+        suffix: "ito",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ita",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "oide",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "anaroide",
+            "aneroide",
+            "asteroide",
+            "axoide",
+            "cardioide",
+            "celuloide",
+            "coronoide",
+            "discoide",
+            "espermatozoide",
+            "espiroide",
+            "esquizoide",
+            "esteroide",
+            "glenoide",
+            "linfoide",
+            "hemorroide",
+            "melaloide",
+            "sacaroide",
+            "tetraploide",
+            "varioloide",
+        ],
+    },
+    RslpRule {
+        suffix: "ola",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "aixola",
+            "ampola",
+            "argola",
+            "arola",
+            "arteríola",
+            "bandola",
+            "bítola",
+            "bractéola",
+            "cachola",
+            "carambola",
+            "carapola",
+            "carola",
+            "carrandiola",
+            "catrapola",
+            "cebola",
+            "centola",
+            "champola",
+            "chatola",
+            "cirola",
+            "cítola",
+            "consola",
+            "corola",
+            "empola",
+            "escarola",
+            "esmola",
+            "estola",
+            "fitola",
+            "florícola",
+            "garañola",
+            "gárgola",
+            "garxola",
+            "glicocola",
+            "góndola",
+            "mariola",
+            "marola",
+            "michola",
+            "pirola",
+            "rebola",
+            "rupícola",
+            "saxícola",
+            "sémola",
+            "tachola",
+            "tómbola",
+        ],
+    },
+    RslpRule {
+        suffix: "olo",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "arrolo",
+            "babiolo",
+            "cacharolo",
+            "caixarolo",
+            "carolo",
+            "carramolo",
+            "cascarolo",
+            "cirolo",
+            "codrolo",
+            "correolo",
+            "cotrolo",
+            "desconsolo",
+            "rebolo",
+            "repolo",
+            "subsolo",
+            "tixolo",
+            "tómbolo",
+            "torolo",
+            "trémolo",
+            "vacúolo",
+            "xermolo",
+            "zócolo",
+        ],
+    },
+    RslpRule {
+        suffix: "ote",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "aigote",
+            "alcaiote",
+            "barbarote",
+            "balote",
+            "billote",
+            "cachote",
+            "camarote",
+            "capote",
+            "cebote",
+            "chichote",
+            "citote",
+            "cocorote",
+            "escote",
+            "gañote",
+            "garrote",
+            "gavote",
+            "lamote",
+            "lapote",
+            "larapote",
+            "lingote",
+            "lítote",
+            "magote",
+            "marrote",
+            "matalote",
+            "pandote",
+            "paparote",
+            "rebote",
+            "tagarote",
+            "zarrote",
+        ],
+    },
+    RslpRule {
+        suffix: "ota",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "asíntota",
+            "caiota",
+            "cambota",
+            "chacota",
+            "compota",
+            "creosota",
+            "curota",
+            "derrota",
+            "díspota",
+            "gamota",
+            "maniota",
+            "pelota",
+            "picota",
+            "pillota",
+            "pixota",
+            "queirota",
+            "remota",
+        ],
+    },
+    RslpRule {
+        suffix: "cho",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "abrocho", "arrocho", "carocho", "falucho", "bombacho", "borracho", "mostacho",
+        ],
+    },
+    RslpRule {
+        suffix: "cha",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "borracha",
+            "carracha",
+            "estacha",
+            "garnacha",
+            "limacha",
+            "remolacha",
+            "abrocha",
+        ],
+    },
+    RslpRule {
+        suffix: "uco",
+        min: 4,
+        replacement: "",
+        exceptions: &[
+            "caduco", "estuco", "fachuco", "malluco", "saluco", "trabuco",
+        ],
+    },
+    RslpRule {
+        suffix: "uzo",
+        min: 3,
+        replacement: "",
+        exceptions: &["carriñouzo", "fachuzo", "mañuzo", "mestruzo", "tapuzo"],
+    },
+    RslpRule {
+        suffix: "uza",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "barruza",
+            "chamuza",
+            "chapuza",
+            "charamuza",
+            "conduza",
+            "deduza",
+            "desluza",
+            "entreluza",
+            "induza",
+            "reluza",
+            "seduza",
+            "traduza",
+            "trasluza",
+        ],
+    },
+    RslpRule {
+        suffix: "uxa",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "caramuxa",
+            "carrabouxa",
+            "cartuxa",
+            "coruxa",
+            "curuxa",
+            "gaturuxa",
+            "maruxa",
+            "meruxa",
+            "miruxa",
+            "moruxa",
+            "muruxa",
+            "papuxa",
+            "rabuxa",
+            "trouxa",
+        ],
+    },
+    RslpRule {
+        suffix: "uxo",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "caramuxo",
+            "carouxo",
+            "carrabouxo",
+            "curuxo",
+            "debuxo",
+            "ganduxo",
+            "influxo",
+            "negouxo",
+            "pertuxo",
+            "refluxo",
+        ],
+    },
+    RslpRule {
+        suffix: "ello",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alborello",
+            "artello",
+            "botello",
+            "cachafello",
+            "calello",
+            "casarello",
+            "cazabello",
+            "cercello",
+            "cocerello",
+            "concello",
+            "consello",
+            "desparello",
+            "escaravello",
+            "espello",
+            "fedello",
+            "fervello",
+            "gagafello",
+            "gorrobello",
+            "nortello",
+            "pendello",
+            "troupello",
+            "trebello",
+        ],
+    },
+    RslpRule {
+        suffix: "ella",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alborella",
+            "bertorella",
+            "bocatella",
+            "botella",
+            "calella",
+            "cercella",
+            "gadella",
+            "grosella",
+            "lentella",
+            "movella",
+            "nocella",
+            "noitevella",
+            "parella",
+            "pelella",
+            "percebella",
+            "segorella",
+            "sabella",
+        ],
+    },
+];
+const AUGMENTATIVE: RslpStep = RslpStep {
+    min: 5,
+    whole_word_exceptions: true,
+    conds: &[],
+    rules: AUGMENTATIVE_RULES,
+};
 
-    // -eis -> -el
-    if lower.ends_with("eis") && len > 4 {
-        let mut result = lower[..len - 3].to_string();
-        result.push_str("el");
-        return result;
-    }
+const NOUN_RULES: &[RslpRule] = &[
+    RslpRule {
+        suffix: "dade",
+        min: 3,
+        replacement: "",
+        exceptions: &["acridade", "calidade"],
+    },
+    RslpRule {
+        suffix: "ificar",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eiro",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "agoireiro",
+            "bardalleiro",
+            "braseiro",
+            "barreiro",
+            "canteiro",
+            "capoeiro",
+            "carneiro",
+            "carteiro",
+            "cinceiro",
+            "faroleiro",
+            "mareiro",
+            "preguiceiro",
+            "quinteiro",
+            "raposeiro",
+            "retranqueiro",
+            "regueiro",
+            "sineiro",
+            "troleiro",
+            "ventureiro",
+        ],
+    },
+    RslpRule {
+        suffix: "eira",
+        min: 3,
+        replacement: "",
+        exceptions: &["cabeleira", "canteira", "cocheira", "folleira", "milleira"],
+    },
+    RslpRule {
+        suffix: "ario",
+        min: 3,
+        replacement: "",
+        exceptions: &["armario", "calcario", "lionario", "salario"],
+    },
+    RslpRule {
+        suffix: "aria",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "cetaria",
+            "coronaria",
+            "fumaria",
+            "linaria",
+            "lunaria",
+            "parietaria",
+            "saponaria",
+            "serpentaria",
+        ],
+    },
+    RslpRule {
+        suffix: "ístico",
+        min: 3,
+        replacement: "",
+        exceptions: &["balístico", "ensaístico"],
+    },
+    RslpRule {
+        suffix: "ista",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "batista", "ciclista", "fadista", "operista", "tenista", "verista",
+        ],
+    },
+    RslpRule {
+        suffix: "ado",
+        min: 2,
+        replacement: "",
+        exceptions: &["grado", "agrado"],
+    },
+    RslpRule {
+        suffix: "ato",
+        min: 2,
+        replacement: "",
+        exceptions: &["agnato"],
+    },
+    RslpRule {
+        suffix: "ido",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "cándido",
+            "cândido",
+            "consolido",
+            "decidido",
+            "duvido",
+            "marido",
+            "rápido",
+        ],
+    },
+    RslpRule {
+        suffix: "ida",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "bastida", "dúbida", "dubida", "duvida", "ermida", "éxida", "guarida", "lapicida",
+            "medida", "morida",
+        ],
+    },
+    RslpRule {
+        suffix: "ída",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ido",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "udo",
+        min: 3,
+        replacement: "",
+        exceptions: &["estudo", "escudo"],
+    },
+    RslpRule {
+        suffix: "uda",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ada",
+        min: 3,
+        replacement: "",
+        exceptions: &["abada", "alhada", "allada", "pitada"],
+    },
+    RslpRule {
+        suffix: "dela",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "cambadela",
+            "cavadela",
+            "forcadela",
+            "erisipidela",
+            "mortadela",
+            "espadela",
+            "fondedela",
+            "picadela",
+            "arandela",
+            "candela",
+            "cordela",
+            "escudela",
+            "pardela",
+        ],
+    },
+    RslpRule {
+        suffix: "ela",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "canela",
+            "capela",
+            "cotela",
+            "cubela",
+            "curupela",
+            "escarapela",
+            "esparrela",
+            "estela",
+            "fardela",
+            "flanela",
+            "fornela",
+            "franela",
+            "gabela",
+            "gamela",
+            "gavela",
+            "glumela",
+            "granicela",
+            "lamela",
+            "lapela",
+            "malvela",
+            "manela",
+            "manganela",
+            "mexarela",
+            "micela",
+            "mistela",
+            "novela",
+            "ourela",
+            "panela",
+            "parcela",
+            "pasarela",
+            "patamela",
+            "patela",
+            "paxarela",
+            "pipela",
+            "pitela",
+            "postela",
+            "pubela",
+            "restela",
+            "sabela",
+            "salmonela",
+            "secuela",
+            "sentinela",
+            "soldanela",
+            "subela",
+            "temoncela",
+            "tesela",
+            "tixela",
+            "tramela",
+            "trapela",
+            "varela",
+            "vitela",
+            "xanela",
+            "xestela",
+        ],
+    },
+    RslpRule {
+        suffix: "ábel",
+        min: 2,
+        replacement: "",
+        exceptions: &["afábel", "fiábel"],
+    },
+    RslpRule {
+        suffix: "íbel",
+        min: 2,
+        replacement: "",
+        exceptions: &["críbel", "imposíbel", "posíbel", "fisíbel", "falíbel"],
+    },
+    RslpRule {
+        suffix: "nte",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alimente",
+            "adiante",
+            "acrescente",
+            "elefante",
+            "frequente",
+            "freqüente",
+            "gigante",
+            "instante",
+            "oriente",
+            "permanente",
+            "posante",
+            "possante",
+            "restaurante",
+        ],
+    },
+    RslpRule {
+        suffix: "ncia",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "nza",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "acia",
+        min: 3,
+        replacement: "",
+        exceptions: &["acracia", "audacia", "falacia", "farmacia"],
+    },
+    RslpRule {
+        suffix: "icia",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "caricia",
+            "delicia",
+            "ledicia",
+            "malicia",
+            "milicia",
+            "noticia",
+            "pericia",
+            "presbicia",
+            "primicia",
+            "regalicia",
+            "sevicia",
+            "tiricia",
+        ],
+    },
+    RslpRule {
+        suffix: "iza",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alvariza",
+            "baliza",
+            "cachiza",
+            "caniza",
+            "cañiza",
+            "carbaliza",
+            "carriza",
+            "chamariza",
+            "chapiza",
+            "fraguiza",
+            "latiza",
+            "longaniza",
+            "mañiza",
+            "nabiza",
+            "peliza",
+            "preguiza",
+            "rabiza",
+        ],
+    },
+    RslpRule {
+        suffix: "exar",
+        min: 3,
+        replacement: "",
+        exceptions: &["palmexar"],
+    },
+    RslpRule {
+        suffix: "ación",
+        min: 2,
+        replacement: "",
+        exceptions: &["aeración"],
+    },
+    RslpRule {
+        suffix: "ición",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "condición",
+            "gornición",
+            "monición",
+            "nutrición",
+            "petición",
+            "posición",
+            "sedición",
+            "volición",
+        ],
+    },
+    RslpRule {
+        suffix: "ción",
+        min: 3,
+        replacement: "t",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "sión",
+        min: 3,
+        replacement: "s",
+        exceptions: &["abrasión", "alusión"],
+    },
+    RslpRule {
+        suffix: "azón",
+        min: 2,
+        replacement: "",
+        exceptions: &["armazón"],
+    },
+    RslpRule {
+        suffix: "ón",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "abalón",
+            "acordeón",
+            "alción",
+            "aldrabón",
+            "alerón",
+            "aliñón",
+            "ambón",
+            "bombón",
+            "calzón",
+            "campón",
+            "canalón",
+            "cantón",
+            "capitón",
+            "cañón",
+            "centón",
+            "ciclón",
+            "collón",
+            "colofón",
+            "copón",
+            "cotón",
+            "cupón",
+            "petón",
+            "tirón",
+            "tourón",
+            "turón",
+            "unción",
+            "versión",
+            "zubón",
+            "zurrón",
+        ],
+    },
+    RslpRule {
+        suffix: "ona",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "abandona",
+            "acetona",
+            "aleurona",
+            "amazona",
+            "anémona",
+            "bombona",
+            "cambona",
+            "carona",
+            "chacona",
+            "charamona",
+            "cincona",
+            "condona",
+            "cortisona",
+            "cretona",
+            "cretona",
+            "detona",
+            "estona",
+            "fitohormona",
+            "fregona",
+            "gerona",
+            "hidroquinona",
+            "hormona",
+            "lesiona",
+            "madona",
+            "maratona",
+            "matrona",
+            "metadona",
+            "monótona",
+            "neurona",
+            "pamplona",
+            "peptona",
+            "poltrona",
+            "proxesterona",
+            "quinona",
+            "quinona",
+            "silicona",
+            "sulfona",
+        ],
+    },
+    RslpRule {
+        suffix: "oa",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "abandoa",
+            "madroa",
+            "barbacoa",
+            "estoa",
+            "airoa",
+            "eiroa",
+            "amalloa",
+            "ámboa",
+            "améndoa",
+            "anchoa",
+            "antinéboa",
+            "avéntoa",
+            "avoa",
+            "bágoa",
+            "balboa",
+            "bisavoa",
+            "boroa",
+            "canoa",
+            "caroa",
+            "comadroa",
+            "coroa",
+            "éngoa",
+            "espácoa",
+            "filloa",
+            "fírgoa",
+            "grañoa",
+            "lagoa",
+            "lanzoa",
+            "magoa",
+            "mámoa",
+            "morzoa",
+            "noiteboa",
+            "noraboa",
+            "parañoa",
+            "persoa",
+            "queiroa",
+            "rañoa",
+            "táboa",
+            "tataravoa",
+            "teiroa",
+        ],
+    },
+    RslpRule {
+        suffix: "aco",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aca",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "alpaca",
+            "barraca",
+            "bullaca",
+            "buraca",
+            "carraca",
+            "casaca",
+            "cavaca",
+            "cloaca",
+            "entresaca",
+            "ervellaca",
+            "espinaca",
+            "estaca",
+            "farraca",
+            "millaca",
+            "pastinaca",
+            "pataca",
+            "resaca",
+            "urraca",
+            "purraca",
+        ],
+    },
+    RslpRule {
+        suffix: "al",
+        min: 4,
+        replacement: "",
+        exceptions: &[
+            "afinal",
+            "animal",
+            "estatal",
+            "bisexual",
+            "bissexual",
+            "desleal",
+            "fiscal",
+            "formal",
+            "pessoal",
+            "persoal",
+            "liberal",
+            "postal",
+            "virtual",
+            "visual",
+            "pontual",
+            "puntual",
+            "homosexual",
+            "heterosexual",
+        ],
+    },
+    RslpRule {
+        suffix: "dor",
+        min: 2,
+        replacement: "",
+        exceptions: &["abaixador"],
+    },
+    RslpRule {
+        suffix: "tor",
+        min: 3,
+        replacement: "",
+        exceptions: &["autor", "motor", "pastor", "pintor"],
+    },
+    RslpRule {
+        suffix: "or",
+        min: 2,
+        replacement: "",
+        exceptions: &[
+            "asesor", "assessor", "favor", "mellor", "melhor", "redor", "rigor", "sensor",
+            "tambor", "tumor",
+        ],
+    },
+    RslpRule {
+        suffix: "ora",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "albacora",
+            "anáfora",
+            "áncora",
+            "apisoadora",
+            "ardora",
+            "ascospora",
+            "aurora",
+            "avéspora",
+            "bitácora",
+            "canéfora",
+            "cantimplora",
+            "catáfora",
+            "cepilladora",
+            "demora",
+            "descalcificadora",
+            "diáspora",
+            "empacadora",
+            "epífora",
+            "ecavadora",
+            "escora",
+            "eslora",
+            "espora",
+            "fotocompoñedora",
+            "fotocopiadora",
+            "grampadora",
+            "isícora",
+            "lavadora",
+            "lixadora",
+            "macrospora",
+            "madrépora",
+            "madrágora",
+            "masora",
+            "mellora",
+            "metáfora",
+            "microspora",
+            "milépora",
+            "milpéndora",
+            "nécora",
+            "oospora",
+            "padeadora",
+            "pasiflora",
+            "pécora",
+            "píldora",
+            "pólvora",
+            "ratinadora",
+            "rémora",
+            "retroescavadora",
+            "sófora",
+            "torradora",
+            "trémbora",
+            "uredospora",
+            "víbora",
+            "víncora",
+            "zoospora",
+        ],
+    },
+    RslpRule {
+        suffix: "aría",
+        min: 3,
+        replacement: "",
+        exceptions: &["libraría"],
+    },
+    RslpRule {
+        suffix: "axe",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "aluaxe",
+            "amaraxe",
+            "amperaxe",
+            "bagaxe",
+            "balaxe",
+            "barcaxe",
+            "borraxe",
+            "bescaxe",
+            "cabotaxe",
+            "carraxe",
+            "cartilaxe",
+            "chantaxe",
+            "colaxe",
+            "coraxe",
+            "carruaxe",
+            "dragaxe",
+            "embalaxe",
+            "ensilaxe",
+            "epistaxe",
+            "fagundaxe",
+            "fichaxe",
+            "fogaxe",
+            "forraxe",
+            "fretaxe",
+            "friaxe",
+            "garaxe",
+            "homenaxe",
+            "leitaxe",
+            "liñaxe",
+            "listaxe",
+            "maraxe",
+            "marcaxe",
+            "maridaxe",
+            "masaxe",
+            "miraxe",
+            "montaxe",
+            "pasaxe",
+            "peaxe",
+            "portaxe",
+            "ramaxe",
+            "rebelaxe",
+            "rodaxe",
+            "romaxe",
+            "sintaxe",
+            "sondaxe",
+            "tiraxe",
+            "vantaxe",
+            "vendaxe",
+            "viraxe",
+        ],
+    },
+    RslpRule {
+        suffix: "dizo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eza",
+        min: 3,
+        replacement: "",
+        exceptions: &["alteza", "beleza", "fereza", "fineza", "vasteza", "vileza"],
+    },
+    RslpRule {
+        suffix: "ez",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "acidez", "adultez", "adustez", "avidez", "candidez", "mudez", "nenez", "nudez",
+            "pomez",
+        ],
+    },
+    RslpRule {
+        suffix: "engo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ego",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "corego", "derrego", "entrego", "lamego", "sarego", "sartego",
+        ],
+    },
+    RslpRule {
+        suffix: "oso",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "afanoso", "algoso", "caldoso", "caloso", "cocoso", "ditoso", "favoso", "fogoso",
+            "lamoso", "mecoso", "mocoso", "precioso", "rixoso", "venoso", "viroso", "xesoso",
+        ],
+    },
+    RslpRule {
+        suffix: "osa",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "mucosa",
+            "glicosa",
+            "baldosa",
+            "celulosa",
+            "isoglosa",
+            "nitrocelulosa",
+            "levulosa",
+            "ortosa",
+            "pectosa",
+            "preciosa",
+            "sacarosa",
+            "serosa",
+            "ventosa",
+        ],
+    },
+    RslpRule {
+        suffix: "ume",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "agrume", "albume", "alcume", "batume", "cacume", "cerrume", "chorume", "churume",
+            "costume", "curtume", "estrume", "gafume", "legume", "perfume", "queixume", "zarrume",
+        ],
+    },
+    RslpRule {
+        suffix: "ura",
+        min: 3,
+        replacement: "",
+        exceptions: &["albura", "armadura", "imatura", "costura"],
+    },
+    RslpRule {
+        suffix: "iñar",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "il",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "abril", "alfil", "anil", "atril", "badil", "baril", "barril", "brasil", "cadril",
+            "candil", "cantil", "carril", "chamil", "chancil", "civil", "cubil", "dátil",
+            "difícil", "dócil", "edil", "estéril", "fácil", "fráxil", "funil", "fusil", "grácil",
+            "gradil", "hábil", "hostil", "marfil",
+        ],
+    },
+    RslpRule {
+        suffix: "esco",
+        min: 4,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "isco",
+        min: 4,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ivo",
+        min: 3,
+        replacement: "",
+        exceptions: &[
+            "pasivo",
+            "positivo",
+            "passivo",
+            "possessivo",
+            "posesivo",
+            "pexotarivo",
+            "relativo",
+        ],
+    },
+];
+const NOUN: RslpStep = RslpStep {
+    min: 4,
+    whole_word_exceptions: false,
+    conds: &[],
+    rules: NOUN_RULES,
+};
 
-    // -ís -> -il
-    if lower.ends_with("ís") && len > 3 {
-        let mut result = lower[..len - "ís".len()].to_string();
-        result.push_str("il");
-        return result;
-    }
+const VERB_RULES: &[RslpRule] = &[
+    RslpRule {
+        suffix: "aba",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "abade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ábade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "abamo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ábamo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aban",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ache",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "an",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ando",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ar",
+        min: 2,
+        replacement: "",
+        exceptions: &["azar", "bazar", "patamar"],
+    },
+    RslpRule {
+        suffix: "arade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aramo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "arán",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aran",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "árade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aría",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ariade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aríade",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "arian",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ariamo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aron",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ase",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "asede",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ásede",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "asemo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ásemo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "asen",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "avan",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aríamo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "assen",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ássemo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eríamo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "êssemo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iríamo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "íssemo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "áramo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "árei",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aren",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aremo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aríei",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ássei",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ávamo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "êramo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eremo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eríei",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "êssei",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "íramo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iremo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iríei",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "íssei",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "issen",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "endo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "indo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ondo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "arde",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "arei",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aria",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "armo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "asse",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "aste",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ávei",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erão",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erde",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erei",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "êrei",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eren",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eria",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ermo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "este",
+        min: 1,
+        replacement: "",
+        exceptions: &["faroeste", "agreste"],
+    },
+    RslpRule {
+        suffix: "íamo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ian",
+        min: 2,
+        replacement: "",
+        exceptions: &["enfian", "eloxian", "ensaian"],
+    },
+    RslpRule {
+        suffix: "irde",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irei",
+        min: 3,
+        replacement: "",
+        exceptions: &["admirei"],
+    },
+    RslpRule {
+        suffix: "iren",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iria",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irmo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "isse",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iste",
+        min: 4,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iava",
+        min: 1,
+        replacement: "",
+        exceptions: &["ampliava"],
+    },
+    RslpRule {
+        suffix: "amo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iona",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ara",
+        min: 2,
+        replacement: "",
+        exceptions: &["arara", "prepara"],
+    },
+    RslpRule {
+        suffix: "ará",
+        min: 2,
+        replacement: "",
+        exceptions: &["alvará", "bacará"],
+    },
+    RslpRule {
+        suffix: "are",
+        min: 2,
+        replacement: "",
+        exceptions: &["prepare"],
+    },
+    RslpRule {
+        suffix: "ava",
+        min: 2,
+        replacement: "",
+        exceptions: &["agrava"],
+    },
+    RslpRule {
+        suffix: "emo",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "era",
+        min: 1,
+        replacement: "",
+        exceptions: &["acelera", "espera"],
+    },
+    RslpRule {
+        suffix: "erá",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ere",
+        min: 1,
+        replacement: "",
+        exceptions: &["espere"],
+    },
+    RslpRule {
+        suffix: "íei",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "in",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "imo",
+        min: 3,
+        replacement: "",
+        exceptions: &["reprimo", "intimo", "íntimo", "nimo", "queimo", "ximo"],
+    },
+    RslpRule {
+        suffix: "ira",
+        min: 3,
+        replacement: "",
+        exceptions: &["fronteira", "sátira"],
+    },
+    RslpRule {
+        suffix: "ído",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irá",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "tizar",
+        min: 4,
+        replacement: "",
+        exceptions: &["alfabetizar"],
+    },
+    RslpRule {
+        suffix: "izar",
+        min: 3,
+        replacement: "",
+        exceptions: &["organizar"],
+    },
+    RslpRule {
+        suffix: "itar",
+        min: 5,
+        replacement: "",
+        exceptions: &["acreditar", "explicitar", "estreitar"],
+    },
+    RslpRule {
+        suffix: "ire",
+        min: 3,
+        replacement: "",
+        exceptions: &["adquire"],
+    },
+    RslpRule {
+        suffix: "omo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ai",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ear",
+        min: 4,
+        replacement: "",
+        exceptions: &["alardear", "nuclear"],
+    },
+    RslpRule {
+        suffix: "uei",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "uía",
+        min: 5,
+        replacement: "u",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ei",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "er",
+        min: 1,
+        replacement: "",
+        exceptions: &["éter", "pier"],
+    },
+    RslpRule {
+        suffix: "eu",
+        min: 1,
+        replacement: "",
+        exceptions: &["chapeu"],
+    },
+    RslpRule {
+        suffix: "ia",
+        min: 1,
+        replacement: "",
+        exceptions: &[
+            "estória", "fatia", "acia", "praia", "elogia", "mania", "lábia", "aprecia", "polícia",
+            "arredia", "cheia", "ásia",
+        ],
+    },
+    RslpRule {
+        suffix: "ir",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iu",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eou",
+        min: 5,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ou",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "i",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ede",
+        min: 1,
+        replacement: "",
+        exceptions: &[
+            "rede",
+            "bípede",
+            "céspede",
+            "parede",
+            "palmípede",
+            "vostede",
+            "hóspede",
+            "adrede",
+        ],
+    },
+    RslpRule {
+        suffix: "ei",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "en",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erade",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "érade",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eran",
+        min: 2,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eramo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "éramo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erán",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ería",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eriade",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eríade",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eriamo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erian",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "erían",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "eron",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ese",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "esedes",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ésedes",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "esemo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ésemo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "esen",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "êssede",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ía",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iade",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "íade",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iamo",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ían",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iche",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ide",
+        min: 1,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irade",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "írade",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iramo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irán",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iría",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iriade",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iríade",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iriamo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irian",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "irían",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "iron",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ise",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "isede",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ísede",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "isemo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ísemo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "isen",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "íssede",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "tizar",
+        min: 3,
+        replacement: "",
+        exceptions: &["alfabetizar"],
+    },
+    RslpRule {
+        suffix: "ondo",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+];
+const VERB: RslpStep = RslpStep {
+    min: 2,
+    whole_word_exceptions: false,
+    conds: &[],
+    rules: VERB_RULES,
+};
 
-    // -is -> -il (unstressed)
-    if lower.ends_with("is") && len > 3 {
-        let mut result = lower[..len - 2].to_string();
-        result.push('l');
-        return result;
-    }
-
-    // -les -> -l
-    if lower.ends_with("les") && len > 4 {
-        return lower[..len - 2].to_string();
-    }
-
-    // -res -> -r
-    if lower.ends_with("res") && len > 4 {
-        return lower[..len - 2].to_string();
-    }
-
-    // -s (generic)
-    if lower.ends_with('s') && len > 3 {
-        return lower[..len - 1].to_string();
-    }
-
-    lower
-}
-
-fn stem_galician(word: &str) -> String {
-    let lower = word.to_lowercase();
-    let len = lower.len();
-
-    if len < 4 {
-        return lower;
-    }
-
-    // First reduce plural
-    let word = stem_galician_plural(&lower);
-    let len = word.len();
-
-    if len < 3 {
-        return word;
-    }
-
-    // Remove augmentative/diminutive suffixes
-    let augmentative = ["iño", "iña", "ote", "ota", "azo", "aza"];
-    for suffix in &augmentative {
-        if word.ends_with(suffix) && len > suffix.len() + 2 {
-            return word[..len - suffix.len()].to_string();
-        }
-    }
-
-    // Remove adverb
-    if word.ends_with("mente") && len > 7 {
-        return word[..len - 5].to_string();
-    }
-
-    // Remove common derivational suffixes
-    let suffixes = [
-        "ización", "amente", "idade", "ación", "ición", "mente", "ismo", "ista", "anza", "enza",
-        "eiro", "eira", "ería", "ble", "dor", "dora", "oso", "osa",
-    ];
-
-    for suffix in &suffixes {
-        if word.ends_with(suffix) && len > suffix.len() + 2 {
-            return word[..len - suffix.len()].to_string();
-        }
-    }
-
-    // Remove gender marker
-    if word.ends_with('a') && len > 3 {
-        let mut result = word[..len - 1].to_string();
-        result.push('o');
-        return result;
-    }
-
-    word
-}
+const VOWEL_RULES: &[RslpRule] = &[
+    RslpRule {
+        suffix: "gue",
+        min: 2,
+        replacement: "g",
+        exceptions: &[
+            "azougue", "dengue", "merengue", "nurague", "merengue", "rengue",
+        ],
+    },
+    RslpRule {
+        suffix: "que",
+        min: 2,
+        replacement: "c",
+        exceptions: &[
+            "alambique",
+            "albaricoque",
+            "abaroque",
+            "alcrique",
+            "almadraque",
+            "almanaque",
+            "arenque",
+            "arinque",
+            "baduloque",
+            "ballestrinque",
+            "betoque",
+            "bivaque",
+            "bloque",
+            "bodaque",
+            "bosque",
+            "breque",
+            "buque",
+            "cacique",
+            "cheque",
+            "claque",
+            "contradique",
+            "coque",
+            "croque",
+            "dique",
+            "duque",
+            "enroque",
+            "espeque",
+            "estoque",
+            "estoraque",
+            "estraloque",
+            "estrinque",
+            "milicroque",
+            "monicreque",
+            "orinque",
+            "arinque",
+            "palenque",
+            "parque",
+            "penique",
+            "picabeque",
+            "pique",
+            "psique",
+            "raque",
+            "remolque",
+            "xeque",
+            "repenique",
+            "roque",
+            "sotobosque",
+            "tabique",
+            "tanque",
+            "toque",
+            "traque",
+            "truque",
+            "vivaque",
+            "xaque",
+        ],
+    },
+    RslpRule {
+        suffix: "a",
+        min: 3,
+        replacement: "",
+        exceptions: &["amasadela", "cerva"],
+    },
+    RslpRule {
+        suffix: "e",
+        min: 3,
+        replacement: "",
+        exceptions: &["marte"],
+    },
+    RslpRule {
+        suffix: "o",
+        min: 3,
+        replacement: "",
+        exceptions: &["barro", "fado", "cabo", "libro", "cervo"],
+    },
+    RslpRule {
+        suffix: "â",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ã",
+        min: 3,
+        replacement: "",
+        exceptions: &["amanhã", "arapuã", "fã", "divã", "manhã"],
+    },
+    RslpRule {
+        suffix: "ê",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ô",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "á",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "é",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "ó",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+    RslpRule {
+        suffix: "i",
+        min: 3,
+        replacement: "",
+        exceptions: &[],
+    },
+];
+const VOWEL: RslpStep = RslpStep {
+    min: 4,
+    whole_word_exceptions: false,
+    conds: &[],
+    rules: VOWEL_RULES,
+};
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use pizza_engine::analysis::TokenFilter;
 
+    fn stem(word: &str) -> String {
+        stem_galician(&word.to_lowercase())
+    }
+
+    // Spot vectors from the Lucene reference vocabulary.
     #[test]
-    fn test_galician_plural() {
+    fn test_spot_vectors() {
+        assert_eq!(stem("mas"), "mas"); // plural exception
+        assert_eq!(stem("elefantes"), "elefant");
+        // full stemmer folds accents unconditionally after all steps
+        assert_eq!(stem("kalóres"), "kalor");
+        assert_eq!(stem("barcelona"), "barcel");
+        assert_eq!(stem("aboiou"), "abo");
+        assert_eq!(stem("masa"), "mas");
+        assert_eq!(stem("aló"), "alo"); // unconditional accent fold
+        assert_eq!(stem("acharían"), "achari");
+        assert_eq!(stem("acompañar"), "acompañ");
+        assert_eq!(stem("aboiando"), "abo");
+        assert_eq!(stem("abandona"), "abandon");
+    }
+
+    #[test]
+    fn test_full_lucene_vocabulary() {
+        let data = include_str!("data/galician_stem.txt");
+        let mut checked = 0;
+        for line in data.lines() {
+            let line = line.trim_end_matches('\r');
+            if line.is_empty() {
+                continue;
+            }
+            let Some((input, expected)) = line.split_once('\t') else {
+                continue;
+            };
+            assert_eq!(stem(input), expected, "vector {input}");
+            checked += 1;
+        }
+        assert!(
+            checked > 9000,
+            "expected the full vocabulary, got {checked}"
+        );
+    }
+
+    #[test]
+    fn test_galician_plural_minimal() {
         let filter = GalicianMinimalStemTokenFilter::new();
 
         let mut token = Token::new("libros", 0, 6, 0);
         filter.filter(&mut token);
         assert_eq!(token.term.as_ref(), "libro");
-    }
-
-    #[test]
-    fn test_galician_full() {
-        let filter = GalicianStemTokenFilter::new();
-
-        let mut token = Token::new("rapidamente", 0, 11, 0);
-        filter.filter(&mut token);
-        assert_eq!(token.term.as_ref(), "rapida");
     }
 }

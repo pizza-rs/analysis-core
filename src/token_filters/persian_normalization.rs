@@ -6,13 +6,14 @@ use pizza_engine::analysis::TokenFilter;
 
 /// Normalizes Persian text. Equivalent to Lucene's `PersianNormalizationFilter`.
 ///
-/// Rules:
-/// - YEH_BARREE (\u06D2), FARSI_YEH (\u06CC) → YEH (\u064A)
-/// - HEH_YEH (\u06C0), HEH_GOAL (\u06C1) → HEH (\u0647)
-/// - KEHEH (\u06A9) → KAF (\u0643)
-/// - Removes: TATWEEL (\u0640), FATHATAN (\u064B), DAMMATAN (\u064C),
-///   KASRATAN (\u064D), FATHA (\u064E), DAMMA (\u064F), KASRA (\u0650),
-///   SHADDA (\u0651), SUKUN (\u0652)
+/// Rules (matching `PersianNormalizer` exactly):
+/// - FARSI_YEH (U+06CC), YEH_BARREE (U+06D2) → YEH (U+064A)
+/// - HEH_YEH (U+06C0), HEH_GOAL (U+06C1) → HEH (U+0647)
+/// - KEHEH (U+06A9) → KAF (U+0643)
+/// - HAMZA_ABOVE (U+0654) is deleted (necessary for HEH + HAMZA)
+///
+/// Diacritics (fatha, damma, …) are deliberately NOT removed: Lucene's
+/// normalizer leaves them untouched.
 #[derive(Clone, Debug, Default)]
 pub struct PersianNormalizationTokenFilter;
 
@@ -34,24 +35,23 @@ impl TokenFilter for PersianNormalizationTokenFilter {
 
         for c in text.chars() {
             match c {
-                // YEH variants → YEH
-                '\u{06D2}' | '\u{06CC}' => {
+                // Farsi yeh / yeh barree → Arabic yeh
+                '\u{06CC}' | '\u{06D2}' => {
                     result.push('\u{064A}');
                     changed = true;
                 }
-                // HEH variants → HEH
-                '\u{06C0}' | '\u{06C1}' => {
-                    result.push('\u{0647}');
-                    changed = true;
-                }
-                // KEHEH → KAF
+                // Keheh → Arabic kaf
                 '\u{06A9}' => {
                     result.push('\u{0643}');
                     changed = true;
                 }
-                // Remove diacritics and TATWEEL
-                '\u{0640}' | '\u{064B}' | '\u{064C}' | '\u{064D}' | '\u{064E}' | '\u{064F}'
-                | '\u{0650}' | '\u{0651}' | '\u{0652}' => {
+                // Heh+yeh / heh goal → heh
+                '\u{06C0}' | '\u{06C1}' => {
+                    result.push('\u{0647}');
+                    changed = true;
+                }
+                // Hamza above is removed (heh + hamza → heh)
+                '\u{0654}' => {
                     changed = true;
                 }
                 _ => {
@@ -93,5 +93,44 @@ mod tests {
         let mut token = Token::new("\u{06A9}", 0, 2, 0);
         f.filter(&mut token);
         assert_eq!(token.term, "\u{0643}");
+    }
+
+    // Vectors from Lucene's TestPersianNormalizationFilter.
+    #[test]
+    fn test_lucene_vectors() {
+        let f = PersianNormalizationTokenFilter::new();
+        // farsi yeh → arabic yeh
+        let mut token = Token::new("های", 0, 6, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "هاي");
+        // yeh barree → arabic yeh
+        let mut token = Token::new("هاے", 0, 6, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "هاي");
+        // keheh → kaf
+        let mut token = Token::new("کشاندن", 0, 10, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "كشاندن");
+        // heh+yeh → heh
+        let mut token = Token::new("كتابۀ", 0, 8, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "كتابه");
+        // heh + hamza above → heh (hamza deleted)
+        let mut token = Token::new("كتابهٔ", 0, 8, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "كتابه");
+        // heh goal → heh
+        let mut token = Token::new("زادہ", 0, 6, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "زاده");
+    }
+
+    #[test]
+    fn test_diacritics_kept() {
+        let f = PersianNormalizationTokenFilter::new();
+        // Lucene leaves diacritics (fatha here) untouched.
+        let mut token = Token::new("بَ", 0, 4, 0);
+        f.filter(&mut token);
+        assert_eq!(token.term, "بَ");
     }
 }

@@ -82,6 +82,13 @@ fn fold_char(ch: char) -> Option<&'static str> {
         'Ź' | 'Ż' | 'Ž' => Some("Z"),
         'ź' | 'ż' | 'ž' => Some("z"),
         'ƒ' => Some("f"),
+        // Latin ligatures (U+FB00..U+FB06), matching Lucene's ASCIIFoldingFilter
+        'ﬀ' => Some("ff"),
+        'ﬁ' => Some("fi"),
+        'ﬂ' => Some("fl"),
+        'ﬃ' => Some("ffi"),
+        'ﬄ' => Some("ffl"),
+        'ﬆ' => Some("st"),
         // Greek
         'Α' => Some("A"),
         'Β' => Some("B"),

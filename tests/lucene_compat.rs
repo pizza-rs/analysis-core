@@ -1036,8 +1036,10 @@ mod galician_stem {
         check("kalór", "kalór");
     }
 
+    // Vectors from Lucene's TestGalicianMinimalStemFilter: the minimal
+    // stemmer is the RSLP Plural step alone (whole-word exceptions, no
+    // accent folding).
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_exceptions() {
         check("mas", "mas");
         check("barcelonês", "barcelonês");
@@ -1132,7 +1134,6 @@ mod ascii_folding {
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_ligatures() {
         check("Œ", "OE");
         check("œ", "oe");
@@ -1140,6 +1141,11 @@ mod ascii_folding {
         check("ĳ", "ij");
         check("ﬁ", "fi");
         check("ﬂ", "fl");
+        // the rest of Lucene's Latin ligature block
+        check("ﬀ", "ff");
+        check("ﬃ", "ffi");
+        check("ﬄ", "ffl");
+        check("ﬆ", "st");
     }
 
     #[test]
@@ -1389,12 +1395,19 @@ mod greek_lowercase {
 mod scandinavian {
     use super::*;
 
+    // Canonical forms are å/æ/ø (Lucene ScandinavianNormalizer): Swedish
+    // umlauts fold to them, digraphs collapse into them. Vectors from
+    // TestScandinavianNormalizationFilter.
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_normalization_ae() {
         let f = ScandinavianNormalizationTokenFilter::new();
-        check_filter(&f, "æ", "ä");
-        check_filter(&f, "ø", "ö");
+        check_filter(&f, "ä", "æ");
+        check_filter(&f, "ö", "ø");
+        check_filter(&f, "æ", "æ"); // already canonical
+        check_filter(&f, "ø", "ø");
+        check_filter(&f, "räksmörgås", "ræksmørgås");
+        check_filter(&f, "raeksmoergås", "ræksmørgås");
+        check_filter(&f, "aeäaeeeae", "æææeeæ");
     }
 
     #[test]
@@ -1540,11 +1553,15 @@ mod hindi_normalization {
 mod indic_normalization {
     use super::*;
 
+    // Lucene's IndicNormalizer COMPOSES decomposed sequences into their
+    // precomposed forms. Vectors from TestIndicNormalizer.testBasics.
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_devanagari_nukta() {
         let f = IndicNormalizationTokenFilter::new();
-        check_filter(&f, "क़", "क");
+        check_filter(&f, "\u{0915}\u{093C}", "\u{0958}"); // क + ़ → क़
+        check_filter(&f, "अाअा", "आआ");
+        check_filter(&f, "अाॅअाॅ", "ऑऑ"); // candra O
+        check_filter(&f, "ত্\u{200D}", "ৎ"); // khanda-ta
     }
 
     #[test]
@@ -1561,20 +1578,27 @@ mod indic_normalization {
 mod persian_normalization {
     use super::*;
 
+    // Lucene's PersianNormalizer maps Farsi forms to their Arabic
+    // equivalents. Vectors from TestPersianNormalizationFilter.
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_yeh_normalization() {
         let f = PersianNormalizationTokenFilter::new();
-        // Arabic Yeh → Farsi Yeh
-        check_filter(&f, "ي", "ی");
+        // Farsi yeh → Arabic yeh
+        check_filter(&f, "های", "هاي");
+        // Yeh barree → Arabic yeh
+        check_filter(&f, "هاے", "هاي");
     }
 
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_keh_normalization() {
         let f = PersianNormalizationTokenFilter::new();
-        // Arabic Kaf → Farsi Keh
-        check_filter(&f, "ك", "ک");
+        // Keheh → Arabic kaf
+        check_filter(&f, "کشاندن", "كشاندن");
+        // Heh+yeh → heh; heh+hamza above → heh (hamza deleted);
+        // heh goal → heh
+        check_filter(&f, "كتابۀ", "كتابه");
+        check_filter(&f, "كتابهٔ", "كتابه");
+        check_filter(&f, "زادہ", "زاده");
     }
 
     #[test]
@@ -2100,26 +2124,20 @@ mod bengali_stem {
 mod fingerprint {
     use super::*;
 
+    // Lucene's FingerprintFilter emits ONE token for the whole field: the
+    // sorted unique terms joined by a separator (ES example: "the quick
+    // brown fox" → "brown fox quick the"). Our per-token API accumulates
+    // through filter() and yields the fingerprint via take_fingerprint().
     #[test]
-    #[ignore = "Lucene parity vector; current implementation is an approximation (tracked for the Lucene-parity porting work)"]
     fn test_basic() {
         let f = FingerprintTokenFilter::new();
         let t = StandardTokenizer::new();
         let mut tokens = t.tokenize("the quick brown fox");
-        let mut all_terms = Vec::new();
         for token in &mut tokens {
-            let (deleted, extra) = f.filter(token);
-            if !deleted {
-                all_terms.push(token.term.to_string());
-            }
-            if let Some(extras) = extra {
-                for et in extras {
-                    all_terms.push(et.term.to_string());
-                }
-            }
+            let (deleted, _) = f.filter(token);
+            assert!(deleted, "fingerprint removes the original token");
         }
-        // Fingerprint produces sorted unique terms joined by space
-        assert!(!all_terms.is_empty());
+        assert_eq!(f.take_fingerprint().unwrap(), "brown fox quick the");
     }
 }
 
