@@ -117,7 +117,8 @@ fn bench_english_analyzer(c: &mut Criterion) {
         |b, text| {
             b.iter(|| {
                 let mut input = String::from(black_box(text));
-                analyzer.analyze_and_return_tokens(&mut input)
+                let tokens = analyzer.analyze_and_return_tokens(&mut input);
+                black_box(tokens.len())
             })
         },
     );
@@ -127,7 +128,8 @@ fn bench_english_analyzer(c: &mut Criterion) {
         |b, text| {
             b.iter(|| {
                 let mut input = String::from(black_box(text));
-                analyzer.analyze_and_return_tokens(&mut input)
+                let tokens = analyzer.analyze_and_return_tokens(&mut input);
+                black_box(tokens.len())
             })
         },
     );
@@ -137,7 +139,8 @@ fn bench_english_analyzer(c: &mut Criterion) {
         |b, text| {
             b.iter(|| {
                 let mut input = String::from(black_box(text));
-                analyzer.analyze_and_return_tokens(&mut input)
+                let tokens = analyzer.analyze_and_return_tokens(&mut input);
+                black_box(tokens.len())
             })
         },
     );
