@@ -521,7 +521,9 @@ mod tests {
 
     #[test]
     fn to_text_keep_original_emits_synonym() {
-        let filter = EmojiToTextTokenFilter { keep_original: true };
+        let filter = EmojiToTextTokenFilter {
+            keep_original: true,
+        };
         let mut token = make_token("\u{1F355}");
         let (deleted, extras) = filter.filter(&mut token);
         assert!(!deleted);
