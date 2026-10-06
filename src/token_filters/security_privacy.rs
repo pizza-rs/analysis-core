@@ -140,10 +140,8 @@ impl TokenFilter for PhoneMaskTokenFilter {
         if digits.len() >= 7 {
             let visible = 4;
             let masked_count = digits.len() - visible;
-            let masked: String = core::iter::repeat(self.mask_char)
-                .take(masked_count)
-                .collect::<String>()
-                + &digits[masked_count..].iter().collect::<String>();
+            let mut masked: String = core::iter::repeat(self.mask_char).take(masked_count).collect();
+            masked.extend(&digits[masked_count..]);
             token.term = Cow::Owned(masked);
         }
         (false, None)
